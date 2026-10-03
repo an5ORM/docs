@@ -1,0 +1,23 @@
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+{% assign queries_available = true %}
+{% if provider == 'nbase' %}{% assign queries_available = false %}{% endif %}
+{% if provider == 'mysql' and code != 'typescript' %}{% assign queries_available = false %}{% endif %}
+{% if provider == 'googlesheets' and code != 'typescript' %}{% assign queries_available = false %}{% endif %}
+<section class="docs-context" data-baseurl="{{ site.baseurl }}" data-guide="queries">
+  <h2>Examples for your stack</h2>
+  {% include docs-context-form.html %}
+  {% if queries_available %}
+  <p>Generate the client from your schema and configure DATABASE_URL for this provider before running these examples.</p>
+  {% case provider %}
+  {% when 'postgresql' %}<p>PostgreSQL uses LIMIT/OFFSET pagination. Python raw SQL uses %s placeholders; Go requires a registered PostgreSQL driver.</p>
+  {% when 'sqlserver' %}<p>SQL Server uses OFFSET/FETCH pagination. Python raw SQL uses ? placeholders; Go requires a registered SQL Server driver.</p>
+  {% when 'sqlite' %}<p>SQLite uses LIMIT/OFFSET pagination and ? placeholders in Python raw SQL. The Go example uses the sqlite3 driver name; register that driver before opening a connection.</p>
+  {% when 'mysql' %}<p>The TypeScript adapter supports MySQL. Structured query filters are translated by the adapter; pagination uses LIMIT/OFFSET.</p>
+  {% when 'googlesheets' %}<p>The TypeScript Google Sheets adapter evaluates structured queries over sheet rows. Raw SQL examples are omitted for this provider.</p>
+  {% endcase %}
+  {% else %}
+  <p>A verified relational-query example for this language/provider combination is not available. Choose another combination. NBase is a vector store; use the vector-search guide for its supported API.</p>
+  {% endif %}
+  <p><a href="{{ '/' | append: code | append: '/' | append: provider | append: '/guides/vector-search/' | relative_url }}">Vector search for this stack</a></p>
+</section>

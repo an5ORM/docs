@@ -1,0 +1,11 @@
+{
+  "name": "an5-docs",
+  "private": true,
+  "scripts": {
+    "docs": "node docs/build-context-pages.mjs && jekyll serve --source docs --livereload",
+    "docs:build": "node docs/build-context-pages.mjs && jekyll build --source docs --destination ./_site",
+    "test:docs": "node docs/test/check-an5-grammar.mjs && node docs/test/check-svg.mjs",
+    "test:docs:browser": "node docs/test/mermaid-browser.mjs && node docs/test/context-browser.mjs",
+    "test:seo": "node scripts/audit-seo.mjs"
+  }
+}

@@ -1,0 +1,23 @@
+---
+layout: null
+permalink: /sitemap.xml
+sitemap: false
+---
+{%- comment -%}
+  Only real content pages: a page with a title, minus the generated utility
+  endpoints. Static files under assets/ are not pages, so they never reach here.
+{%- endcomment -%}
+{%- assign skip = '/search.json,/404.html,/sitemap.xml,/robots.txt' | split: ',' -%}
+{%- assign corpus = site.pages | where_exp: "p", "p.title" | sort: "url" -%}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- for p in corpus -%}
+{%- if skip contains p.url or p.sitemap == false -%}{%- continue -%}{%- endif -%}
+  <url>
+    <loc>{{ p.url | absolute_url | xml_escape }}</loc>
+    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
+    <changefreq>{% if p.url == '/' or p.url == '/index.html' %}weekly{% else %}monthly{% endif %}</changefreq>
+    <priority>{% if p.url == '/' or p.url == '/index.html' %}1.0{% else %}0.8{% endif %}</priority>
+  </url>
+{%- endfor -%}
+</urlset>

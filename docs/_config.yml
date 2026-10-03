@@ -1,0 +1,32 @@
+title: "an5 ORM"
+description: "A modern, type-safe ORM for SQL Server, PostgreSQL, MySQL, SQLite, Google Sheets, and NBase"
+url: "https://an5orm.github.io"
+baseurl: "/docs"
+google_site_verification: "YPl9-lLljuNKiIdvvjlQomRtiXDxEnY8twmu1QIPFis"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+# Defaults
+defaults:
+  - scope:
+      path: "guides"
+    values:
+      layout: "page"
+
+# Exclude
+exclude:
+  - node_modules
+  # Build-time checks, not part of the site.
+  - test
+  - build-context-pages.mjs
+  - Makefile
+  - package.json
+  - package-lock.json
+  - README.md
+  - vendor
+  # Internal review records. Kept in the repository, deliberately not built:
+  # they have no front matter, so Jekyll would copy them as raw .md/.json.
+  - reviews

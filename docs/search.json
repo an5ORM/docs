@@ -1,0 +1,23 @@
+---
+layout: null
+permalink: /search.json
+sitemap: false
+---
+{%- comment -%}
+  The search index, one entry per content page. The utility endpoints are
+  listed here to be excluded: a 404 has a title and would otherwise come up
+  in the results for every dead link.
+{%- endcomment -%}
+{%- assign skip = '/search.json,/404.html,/sitemap.xml,/robots.txt' | split: ',' -%}
+{%- assign corpus = site.pages | where_exp: "p", "p.title" | where_exp: "p", "p.docs_variant != true" | sort: "url" -%}
+[
+{%- for p in corpus -%}
+{%- if skip contains p.url -%}{%- continue -%}{%- endif -%}
+  {
+    "url": {{ p.url | relative_url | jsonify }},
+    "title": {{ p.title | jsonify }},
+    "body": {{ p.content | strip_html | normalize_whitespace | truncate: 4000 | jsonify }},
+    "haystack": {{ p.title | append: ' ' | append: p.content | strip_html | normalize_whitespace | downcase | truncate: 4000 | jsonify }}
+  }{% unless forloop.last %},{% endunless %}
+{%- endfor -%}
+]

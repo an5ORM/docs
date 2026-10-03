@@ -1,0 +1,108 @@
+{
+  "reviewDate": "2026-10-03",
+  "source": "npm audit --json after remediation",
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 6,
+      "critical": 0,
+      "total": 6
+    },
+    "dependencies": {
+      "prod": 336,
+      "dev": 367,
+      "optional": 665,
+      "peer": 63,
+      "peerOptional": 0,
+      "total": 1232
+    }
+  },
+  "mitigations": [
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "scope": "installed root workspace dependencies",
+      "implementation": "scripts/apply-security-backports.mjs",
+      "verification": "npm run test:security",
+      "upstreamStatus": "no patched braces version at review time; npm audit continues to flag the original version"
+    }
+  ],
+  "packages": [
+    {
+      "name": "@vscode/vsce",
+      "severity": "high",
+      "nodes": [
+        "node_modules/@vscode/vsce"
+      ],
+      "via": [
+        "secretlint"
+      ]
+    },
+    {
+      "name": "braces",
+      "severity": "high",
+      "nodes": [
+        "node_modules/braces"
+      ],
+      "via": [
+        {
+          "source": 1240992,
+          "name": "braces",
+          "dependency": "braces",
+          "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "severity": "high",
+          "cwe": [
+            "CWE-674"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.0.3"
+        }
+      ]
+    },
+    {
+      "name": "fast-glob",
+      "severity": "high",
+      "nodes": [
+        "node_modules/fast-glob"
+      ],
+      "via": [
+        "micromatch"
+      ]
+    },
+    {
+      "name": "globby",
+      "severity": "high",
+      "nodes": [
+        "node_modules/globby"
+      ],
+      "via": [
+        "fast-glob"
+      ]
+    },
+    {
+      "name": "micromatch",
+      "severity": "high",
+      "nodes": [
+        "node_modules/micromatch"
+      ],
+      "via": [
+        "braces"
+      ]
+    },
+    {
+      "name": "secretlint",
+      "severity": "high",
+      "nodes": [
+        "node_modules/secretlint"
+      ],
+      "via": [
+        "globby"
+      ]
+    }
+  ]
+}

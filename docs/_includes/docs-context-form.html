@@ -1,0 +1,14 @@
+  <form id="docsContextForm">
+    <label for="docsCode">Language</label>
+    <select id="docsCode" name="code">
+      {% assign codes = 'typescript,python,dotnet,golang,rust' | split: ',' %}
+      {% for option in codes %}<option value="{{ option }}" {% if option == code %}selected{% endif %}>{% case option %}{% when 'typescript' %}TypeScript{% when 'python' %}Python{% when 'dotnet' %}.NET (C#){% when 'golang' %}Go{% when 'rust' %}Rust{% when 'sqlserver' %}SQL Server{% when 'postgresql' %}PostgreSQL{% when 'mysql' %}MySQL{% when 'sqlite' %}SQLite{% when 'googlesheets' %}Google Sheets{% when 'nbase' %}NBase{% endcase %}</option>{% endfor %}
+    </select>
+    <label for="docsProvider">Database provider</label>
+    <select id="docsProvider" name="provider">
+      {% assign providers = 'sqlserver,postgresql,mysql,sqlite,googlesheets,nbase' | split: ',' %}
+      {% for option in providers %}<option value="{{ option }}" {% if option == provider %}selected{% endif %}>{% case option %}{% when 'typescript' %}TypeScript{% when 'python' %}Python{% when 'dotnet' %}.NET (C#){% when 'golang' %}Go{% when 'rust' %}Rust{% when 'sqlserver' %}SQL Server{% when 'postgresql' %}PostgreSQL{% when 'mysql' %}MySQL{% when 'sqlite' %}SQLite{% when 'googlesheets' %}Google Sheets{% when 'nbase' %}NBase{% endcase %}</option>{% endfor %}
+    </select>
+    <button type="submit">Load examples</button>
+  </form>
+  <p>Selected: <strong>{{ code }}</strong> / <strong>{{ provider }}</strong>.</p>

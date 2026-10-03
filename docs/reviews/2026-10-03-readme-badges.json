@@ -1,0 +1,125 @@
+{
+  "readmes": 12,
+  "badges": 6,
+  "images": 9,
+  "failures": 0,
+  "files": [
+    {
+      "file": "README.md",
+      "badges": 3
+    },
+    {
+      "file": "an5Adapters/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Adapters/rust/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Agent/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Cli/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Cli/ui/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Client/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Orm/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "badges": 3
+    },
+    {
+      "file": "an5Schema/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Site/README.md",
+      "badges": 0
+    },
+    {
+      "file": "an5Tasks/README.md",
+      "badges": 0
+    }
+  ],
+  "entries": [
+    {
+      "file": "README.md",
+      "line": 4,
+      "url": "https://raw.githubusercontent.com/an5ORM/an5OrmVScode/main/icons/an5-128x128.png",
+      "badge": false,
+      "status": 200
+    },
+    {
+      "file": "README.md",
+      "line": 7,
+      "url": "https://img.shields.io/badge/License-MIT-yellow.svg",
+      "badge": true,
+      "status": 200,
+      "title": "License: MIT"
+    },
+    {
+      "file": "README.md",
+      "line": 8,
+      "url": "https://img.shields.io/badge/Node.js-CI%2022-green.svg",
+      "badge": true,
+      "status": 200,
+      "title": "Node.js: CI 22"
+    },
+    {
+      "file": "README.md",
+      "line": 9,
+      "url": "https://img.shields.io/badge/TypeScript-7.0.2-blue.svg",
+      "badge": true,
+      "status": 200,
+      "title": "TypeScript: 7.0.2"
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "line": 4,
+      "url": "icons/an5-128x128.png",
+      "badge": false
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "line": 9,
+      "url": "https://img.shields.io/badge/VS_Code-Marketplace-007ACC",
+      "badge": true,
+      "status": 200,
+      "title": "VS Code: Marketplace"
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "line": 12,
+      "url": "https://img.shields.io/github/v/release/an5ORM/an5OrmVScode",
+      "badge": true,
+      "status": 200,
+      "title": "release: v1.2.0"
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "line": 15,
+      "url": "https://img.shields.io/open-vsx/v/an5orm/an5-orm-vscode",
+      "badge": true,
+      "status": 200,
+      "title": "open vsx: v1.2.0"
+    },
+    {
+      "file": "an5OrmVScode/README.md",
+      "line": 38,
+      "url": "media/connections-preview.png",
+      "badge": false
+    }
+  ]
+}
