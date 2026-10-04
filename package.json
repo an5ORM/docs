@@ -4,8 +4,10 @@
   "scripts": {
     "docs": "node docs/build-context-pages.mjs && jekyll serve --source docs --livereload",
     "docs:build": "node docs/build-context-pages.mjs && jekyll build --source docs --destination ./_site",
-    "test:docs": "node docs/test/check-an5-grammar.mjs && node docs/test/check-svg.mjs",
+    "test:docs": "node docs/test/check-an5-grammar.mjs && node docs/test/check-svg.mjs && npm run --silent brand:check",
     "test:docs:browser": "node docs/test/mermaid-browser.mjs && node docs/test/context-browser.mjs",
-    "test:seo": "node scripts/audit-seo.mjs"
+    "test:seo": "node scripts/audit-seo.mjs",
+    "brand:check": "node scripts/brand-assets.js --check",
+    "brand:sync": "node scripts/brand-assets.js"
   }
 }
