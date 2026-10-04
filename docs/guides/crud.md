@@ -1,15 +1,22 @@
 ---
 layout: page
 title: CRUD Operations
-description: Create, Read, Update, and Delete data with an5 ORM
+description: Create, Read, Update, and Delete data with an5 ORM across all supported client languages
 ---
+
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
 
 # CRUD Operations
 
-`@an5/adapters` provides a clean, type-safe API for all CRUD operations.
+AN5 ORM provides a clean, type-safe API for all CRUD operations tailored for **{{ code | capitalize }}**.
 
-## Setup
+---
 
+## Client Setup
+
+{% case code %}
+{% when 'typescript' %}
 ```typescript
 import { createAn5Adapter } from '@an5/adapters';
 
@@ -18,10 +25,48 @@ const db = createAn5Adapter({
 });
 ```
 
-## Create
+{% when 'python' %}
+```python
+from an5_client import An5Client
+
+db = An5Client()  # automatically connects to DATABASE_URL
+```
+
+{% when 'dotnet' %}
+```csharp
+using An5Orm;
+
+var db = new An5DbContext();
+```
+
+{% when 'golang' %}
+```go
+import (
+    "context"
+    "os"
+    "an5client"
+)
+
+ctx := context.Background()
+db, err := an5client.NewAn5DbContext(ctx, os.Getenv("DATABASE_URL"))
+```
+
+{% when 'rust' %}
+```rust
+use an5_client::{An5Client, UserCreateInput, UserFindManyArgs};
+
+let db = An5Client::from_env().await?;
+```
+{% endcase %}
+
+---
+
+## 1. Create
 
 ### Create a Single Record
 
+{% case code %}
+{% when 'typescript' %}
 ```typescript
 const user = await db.user.create({
   data: {
@@ -29,217 +74,310 @@ const user = await db.user.create({
     name: 'John Doe'
   }
 });
-
 console.log(user);
-// { id: "uuid", email: "john@example.com", name: "John Doe", ... }
 ```
 
-### Create with Relations
+{% when 'python' %}
+```python
+user = db.user.create(data={
+    "email": "john@example.com",
+    "name": "John Doe"
+})
+print("Created user:", user)
+```
 
-```typescript
-const user = await db.user.create({
-  data: {
-    email: 'john@example.com',
-    name: 'John Doe',
-    posts: {
-      create: [
-        { title: 'First Post', content: 'Hello world!' },
-        { title: 'Second Post', content: 'Another post' }
-      ]
-    },
-    profile: {
-      create: { bio: 'Software developer' }
-    }
-  }
+{% when 'dotnet' %}
+```csharp
+var user = await db.Users.CreateAsync(new UserCreateInput
+{
+    Email = "john@example.com",
+    Name = "John Doe"
 });
 ```
+
+{% when 'golang' %}
+```go
+user, err := db.User.Create(ctx, &an5client.UserCreateInput{
+    Email: "john@example.com",
+    Name:  "John Doe",
+})
+```
+
+{% when 'rust' %}
+```rust
+let user = db.user().create(UserCreateInput {
+    email: "john@example.com".to_string(),
+    name: Some("John Doe".to_string()),
+}).await?;
+```
+{% endcase %}
 
 ### Create Many Records
 
+{% case code %}
+{% when 'typescript' %}
 ```typescript
-const users = await db.user.createMany({
+const result = await db.user.createMany({
   data: [
     { email: 'alice@example.com', name: 'Alice' },
     { email: 'bob@example.com', name: 'Bob' },
-    { email: 'charlie@example.com', name: 'Charlie' }
   ]
 });
-
-console.log(`Created ${users.count} users`);
+console.log(`Created ${result.count} users`);
 ```
 
-## Read
+{% when 'python' %}
+```python
+# Batch creation in Python
+users = [
+    db.user.create(data={"email": "alice@example.com", "name": "Alice"}),
+    db.user.create(data={"email": "bob@example.com", "name": "Bob"}),
+]
+```
 
-### Find Unique Record
-
-```typescript
-// By primary key
-const user = await db.user.findUnique({
-  where: { id: 'user-id-123' }
+{% when 'dotnet' %}
+```csharp
+var count = await db.Users.CreateManyAsync(new List<UserCreateInput>
+{
+    new() { Email = "alice@example.com", Name = "Alice" },
+    new() { Email = "bob@example.com", Name = "Bob" }
 });
+```
 
-// By unique field
+{% when 'golang' %}
+```go
+count, err := db.User.CreateMany(ctx, []*an5client.UserCreateInput{
+    {Email: "alice@example.com", Name: "Alice"},
+    {Email: "bob@example.com", Name: "Bob"},
+})
+```
+
+{% when 'rust' %}
+```rust
+for input in vec![
+    UserCreateInput { email: "alice@example.com".into(), name: Some("Alice".into()) },
+    UserCreateInput { email: "bob@example.com".into(), name: Some("Bob".into()) },
+] {
+    db.user().create(input).await?;
+}
+```
+{% endcase %}
+
+---
+
+## 2. Read
+
+### Find by Primary Key or Unique Field
+
+{% case code %}
+{% when 'typescript' %}
+```typescript
 const user = await db.user.findUnique({
   where: { email: 'john@example.com' }
 });
 ```
 
-### Find First Record
+{% when 'python' %}
+```python
+user = db.user.find_first(
+    where={"email": "john@example.com"}
+)
+```
 
-```typescript
-const user = await db.user.findFirst({
-  where: {
-    name: { contains: 'John' },
-    isActive: true
-  },
-  orderBy: { createdAt: 'desc' }
+{% when 'dotnet' %}
+```csharp
+var user = await db.Users.FindFirstAsync(new UserFindFirstArgs
+{
+    Where = new UserWhereInput { Email = new StringFilter { Equals = "john@example.com" } }
 });
 ```
 
-### Find Many Records
+{% when 'golang' %}
+```go
+user, err := db.User.FindFirst(ctx, &an5client.UserFindFirstArgs{
+    Where: &an5client.UserWhereInput{
+        Email: &an5client.StringFilter{Equals: "john@example.com"},
+    },
+})
+```
 
+{% when 'rust' %}
+```rust
+let user = db.user().find_first(UserFindFirstArgs {
+    where_clause: Some(UserWhereInput {
+        email: Some(StringFilter { equals: Some("john@example.com".into()), ..Default::default() }),
+        ..Default::default()
+    }),
+    ..Default::default()
+}).await?;
+```
+{% endcase %}
+
+### Find Many Records with Filter & Sort
+
+{% case code %}
+{% when 'typescript' %}
 ```typescript
 const users = await db.user.findMany({
   where: {
     isActive: true,
     email: { contains: '@example.com' }
   },
-  orderBy: [
-    { createdAt: 'desc' }
-  ],
+  orderBy: { createdAt: 'desc' },
   skip: 0,
   take: 10
 });
 ```
 
-### Count Records
+{% when 'python' %}
+```python
+users = db.user.find_many(
+    where={
+        "is_active": True,
+        "email": {"contains": "@example.com"}
+    },
+    order_by={"created_at": "desc"},
+    skip=0,
+    take=10,
+)
+```
 
-```typescript
-const count = await db.user.count({
-  where: { isActive: true }
+{% when 'dotnet' %}
+```csharp
+var users = await db.Users.FindManyAsync(new UserFindManyArgs
+{
+    Where = new UserWhereInput
+    {
+        IsActive = new BoolFilter { Equals = true },
+        Email = new StringFilter { Contains = "@example.com" }
+    },
+    OrderBy = new UserOrderByInput { CreatedAt = SortOrder.Desc },
+    Take = 10
 });
 ```
 
-## Update
+{% when 'golang' %}
+```go
+users, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
+    Where: &an5client.UserWhereInput{
+        IsActive: &an5client.BoolFilter{Equals: true},
+        Email:    &an5client.StringFilter{Contains: "@example.com"},
+    },
+    Take: 10,
+})
+```
 
-### Update a Single Record
+{% when 'rust' %}
+```rust
+let users = db.user().find_many(UserFindManyArgs {
+    where_clause: Some(UserWhereInput {
+        is_active: Some(BoolFilter { equals: Some(true) }),
+        email: Some(StringFilter { contains: Some("@example.com".into()), ..Default::default() }),
+        ..Default::default()
+    }),
+    take: Some(10),
+    ..Default::default()
+}).await?;
+```
+{% endcase %}
 
+---
+
+## 3. Update
+
+### Update Single Record
+
+{% case code %}
+{% when 'typescript' %}
 ```typescript
-const user = await db.user.update({
-  where: { id: 'user-id-123' },
-  data: {
-    name: 'Jane Doe',
-    updatedAt: new Date()
-  }
+const updated = await db.user.update({
+  where: { id: user.id },
+  data: { name: 'Johnny Doe' }
 });
 ```
 
-### Update Many Records
-
-```typescript
-const result = await db.user.updateMany({
-  where: { role: 'admin' },
-  data: { isActive: true }
-});
-
-console.log(`Updated ${result.count} users`);
+{% when 'python' %}
+```python
+updated = db.user.update(
+    where={"id": user["id"]},
+    data={"name": "Johnny Doe"}
+)
 ```
 
-### Upsert (Update or Create)
-
-```typescript
-const user = await db.user.upsert({
-  where: { email: 'john@example.com' },
-  update: { name: 'John Updated' },
-  create: {
-    email: 'john@example.com',
-    name: 'John Doe'
-  }
+{% when 'dotnet' %}
+```csharp
+await db.Users.UpdateAsync(new UserUpdateArgs
+{
+    Where = new UserWhereInput { Id = new StringFilter { Equals = user.Id } },
+    Data = new UserUpdateInput { Name = "Johnny Doe" }
 });
 ```
 
-## Delete
+{% when 'golang' %}
+```go
+err := db.User.Update(ctx, &an5client.UserUpdateArgs{
+    Where: &an5client.UserWhereInput{Id: &an5client.StringFilter{Equals: user.Id}},
+    Data:  &an5client.UserUpdateInput{Name: "Johnny Doe"},
+})
+```
 
-### Delete a Single Record
+{% when 'rust' %}
+```rust
+let updated = db.user().update(UserUpdateArgs {
+    where_clause: UserWhereInput { id: Some(StringFilter { equals: Some(user.id.clone()), ..Default::default() }), ..Default::default() },
+    data: UserUpdateInput { name: Some("Johnny Doe".into()), ..Default::default() },
+}).await?;
+```
+{% endcase %}
 
+---
+
+## 4. Delete
+
+### Delete Single Record
+
+{% case code %}
+{% when 'typescript' %}
 ```typescript
-const user = await db.user.delete({
-  where: { id: 'user-id-123' }
+await db.user.delete({
+  where: { id: user.id }
 });
 ```
 
-### Delete Many Records
-
-```typescript
-const result = await db.user.deleteMany({
-  where: { isActive: false }
-});
-
-console.log(`Deleted ${result.count} users`);
+{% when 'python' %}
+```python
+db.user.delete(where={"id": user["id"]})
 ```
 
-## Transactions
-
-Use `$transaction` to execute multiple operations atomically:
-
-```typescript
-await db.$transaction(async (tx) => {
-  // All operations succeed or all fail
-  const user = await tx.user.create({
-    data: { email: 'john@example.com', name: 'John' }
-  });
-  
-  const order = await tx.order.create({
-    data: {
-      userId: user.id,
-      total: 100
-    }
-  });
-  
-  // If any error occurs, all changes are rolled back
+{% when 'dotnet' %}
+```csharp
+await db.Users.DeleteAsync(new UserWhereInput
+{
+    Id = new StringFilter { Equals = user.Id }
 });
 ```
 
-When you need explicit control over when the transaction commits or rolls back,
-use interactive transactions instead — see [Transactions]({{ '/guides/transactions/' | relative_url }}).
-
-## Raw Queries
-
-Execute raw SQL when you need more control:
-
-```typescript
-// Query with parameters
-const users = await db.$queryRaw`
-  SELECT * FROM users 
-  WHERE email LIKE ${'%@example.com'}
-  ORDER BY created_at DESC
-`;
-
-// Execute (INSERT, UPDATE, DELETE)
-const result = await db.$executeRaw`
-  UPDATE users SET is_active = 0 
-  WHERE last_login < ${dateThreshold}
-`;
+{% when 'golang' %}
+```go
+err := db.User.Delete(ctx, &an5client.UserWhereInput{
+    Id: &an5client.StringFilter{Equals: user.Id},
+})
 ```
 
-## Error Handling
-
-```typescript
-try {
-  const user = await db.user.create({
-    data: { email: 'john@example.com' }
-  });
-} catch (error) {
-  if (error.code === 'P2002') {
-    console.log('Unique constraint violation');
-  } else {
-    console.error('Database error:', error);
-  }
-}
+{% when 'rust' %}
+```rust
+db.user().delete(UserWhereInput {
+    id: Some(StringFilter { equals: Some(user.id.clone()), ..Default::default() }),
+    ..Default::default()
+}).await?;
 ```
+{% endcase %}
+
+---
 
 ## Next Steps
 
-- [Relations]({{ '/guides/relations/' | relative_url }}) - Define relationships between models
-- [Advanced Queries]({{ '/guides/queries/' | relative_url }}) - Complex query patterns
-- [Transactions]({{ '/guides/transactions/' | relative_url }}) - Atomic operations
+- [Advanced Queries]({{ '/guides/queries/' | relative_url }}) - In-depth filtering, pagination, and aggregation
+- [Relations & Joins]({{ '/guides/relations/' | relative_url }}) - One-to-many and many-to-many relations
+- [Database Providers]({{ '/guides/providers/' | relative_url }}) - Provider dialect specifics
+- [Client Languages]({{ '/guides/client-languages/' | relative_url }}) - Complete language runtime specifications

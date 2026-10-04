@@ -1,28 +1,39 @@
 {% assign code = page.docs_code | default: 'typescript' %}
 {% assign provider = page.docs_provider | default: 'sqlite' %}
-<section class="docs-context" data-baseurl="{{ site.baseurl }}" data-guide="vector-search">
-  <h2>Examples for your stack</h2>
-  {% include docs-context-form.html %}
-  {% if provider == 'postgresql' %}
-  <p>Enable pgvector and store embeddings in a vector column with the same dimension as the query. Native search requires a compatible column; otherwise the runtime falls back to scanning rows in memory.</p>
-  {% elsif provider == 'sqlserver' %}
-  <p>Native search requires SQL Server 2025 VECTOR_DISTANCE and compatible embeddings. Earlier versions use the in-memory fallback.</p>
-  {% elsif provider == 'nbase' %}
-  <p>NBase vector integration is documented for the TypeScript runtime. The examples below use an NBase-only adapter; no relational table is required.</p>
-  {% else %}
-  <p>This provider has no native vector search in AN5. Where supported, the runtime loads matching rows and ranks their embeddings in memory. Limit table size and filter candidates early.</p>
-  {% endif %}
-  {% assign unavailable = false %}
-  {% if provider == 'nbase' and code != 'typescript' %}{% assign unavailable = true %}{% endif %}
-  {% if provider == 'googlesheets' %}{% assign unavailable = true %}{% endif %}
-  {% if provider == 'mysql' and code != 'typescript' %}{% assign unavailable = true %}{% endif %}
-  {% if unavailable %}
-  <p>A verified vector-search example for this language/provider combination is not available. Choose another combination above; do not assume another runtime's API applies.</p>
-  {% else %}
-  <p>Generate the Document model client first and configure its adapter for the selected provider. The snippets assume an initialized runtime table client named <code>table</code> (or a generated TypeScript client named <code>db</code>) and a query embedding with the same dimension as stored embeddings.</p>
-  {% case code %}
-  {% when 'typescript' %}
-  <pre><code class="language-typescript">{% if provider == 'nbase' %}import { createAn5Adapter } from '@an5/adapters';
+
+{% if provider == 'postgresql' %}
+<p class="guide-note">
+  <strong>PostgreSQL note:</strong> Enable pgvector and store embeddings in a vector column with the same dimension as the query. Native search requires a compatible column; otherwise the runtime falls back to scanning rows in memory.
+</p>
+{% elsif provider == 'sqlserver' %}
+<p class="guide-note">
+  <strong>SQL Server note:</strong> Native search requires SQL Server 2025 VECTOR_DISTANCE and compatible embeddings. Earlier versions use the in-memory fallback.
+</p>
+{% elsif provider == 'nbase' %}
+<p class="guide-note">
+  <strong>NBase note:</strong> NBase vector integration is documented for the TypeScript runtime. The examples below use an NBase-only adapter; no relational table is required.
+</p>
+{% else %}
+<p class="guide-note">
+  <strong>{{ provider | capitalize }} note:</strong> This provider has no native vector search in AN5. Where supported, the runtime loads matching rows and ranks their embeddings in memory. Limit table size and filter candidates early.
+</p>
+{% endif %}
+
+{% assign unavailable = false %}
+{% if provider == 'nbase' and code != 'typescript' %}{% assign unavailable = true %}{% endif %}
+{% if provider == 'googlesheets' %}{% assign unavailable = true %}{% endif %}
+{% if provider == 'mysql' and code != 'typescript' %}{% assign unavailable = true %}{% endif %}
+
+{% if unavailable %}
+<p class="guide-warning">
+  <strong>Notice:</strong> A verified vector-search example for <strong>{{ code | capitalize }} + {{ provider | capitalize }}</strong> is not available. Please choose another combination from the header above; do not assume another runtime's API applies.
+</p>
+{% else %}
+<p>Generate the Document model client first and configure its adapter for the selected provider. The snippets assume an initialized runtime table client named <code>table</code> (or a generated TypeScript client named <code>db</code>) and a query embedding with the same dimension as stored embeddings.</p>
+
+{% case code %}
+{% when 'typescript' %}
+<pre><code class="language-typescript">{% if provider == 'nbase' %}import { createAn5Adapter } from '@an5/adapters';
 const db = createAn5Adapter({ connectionString: 'nbase://localhost:1307' });
 await db.$connect();
 const results = await db.table('Document').vectorSearch({
@@ -32,22 +43,22 @@ const results = await db.table('Document').vectorSearch({
   take: 10,
   distanceMetric: 'cosine'
 });</code></pre>
-  {% when 'python' %}
-  <pre><code class="language-python">results = table.vector_search(
+{% when 'python' %}
+<pre><code class="language-python">results = table.vector_search(
     vector=query_embedding,
     take=10,
     vector_field="embedding",
     distance_metric="cosine",
 )</code></pre>
-  {% when 'dotnet' %}
-  <pre><code class="language-csharp">var results = table.VectorSearch(
+{% when 'dotnet' %}
+<pre><code class="language-csharp">var results = table.VectorSearch(
     vector: queryEmbedding,
     take: 10,
     vectorField: "embedding",
     distanceMetric: "cosine"
 );</code></pre>
-  {% when 'golang' %}
-  <pre><code class="language-go">// table is an adapter TableClient; ctx is a context.Context.
+{% when 'golang' %}
+<pre><code class="language-go">// table is an adapter TableClient; ctx is a context.Context.
 // Import the adapter package as an5adapters.
 results, err := table.VectorSearch(ctx, &amp;an5adapters.VectorSearchArgs{
     Vector: queryEmbedding,
@@ -58,8 +69,8 @@ results, err := table.VectorSearch(ctx, &amp;an5adapters.VectorSearchArgs{
 if err != nil {
     return err
 }</code></pre>
-  {% when 'rust' %}
-  <pre><code class="language-rust">use an5_adapters::VectorSearchArgs;
+{% when 'rust' %}
+<pre><code class="language-rust">use an5_adapters::VectorSearchArgs;
 
 let results = table.vector_search(&amp;VectorSearchArgs {
     vector: query_embedding,
@@ -68,8 +79,7 @@ let results = table.vector_search(&amp;VectorSearchArgs {
     distance_metric: "cosine".into(),
     ..Default::default()
 }).await?;</code></pre>
-  <p>Use the adapter source in <code>an5Adapters/rust</code> as a local Cargo path dependency until registry availability is verified.</p>
-  {% endcase %}
-  {% endif %}
-  {% if code != 'typescript' %}<p>Advanced NBase and relation examples are available in the <a href="{{ '/typescript/' | append: provider | append: '/guides/vector-search/' | relative_url }}">TypeScript reference</a>.</p>{% endif %}
-</section>
+<p>Use the adapter source in <code>an5Adapters/rust</code> as a local Cargo path dependency until registry availability is verified.</p>
+{% endcase %}
+{% endif %}
+{% if code != 'typescript' %}<p>Advanced NBase and relation examples are available in the <a href="{{ '/typescript/' | append: provider | append: '/guides/vector-search/' | relative_url }}">TypeScript reference</a>.</p>{% endif %}

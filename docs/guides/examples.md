@@ -6,12 +6,21 @@ description: Run the an5example repository across all languages, dialects, and t
 
 # Examples
 
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+
+<p class="guide-note">
+  <strong>Selected Stack:</strong> Run example for <strong>{{ code | capitalize }}</strong> on <strong>{{ provider | capitalize }}</strong>:<br>
+  Command: <code>{% case code %}{% when 'typescript' %}npm run test:example:ts{% when 'python' %}npm run test:python{% when 'dotnet' %}npm run test:example:dotnet{% when 'golang' %}npm run test:go{% when 'rust' %}npm run test:rust{% endcase %}</code><br>
+  Test against live {{ provider | capitalize }}: <code>AN5_DATABASE_URL="{% case provider %}{% when 'postgresql' %}postgres://user:pass@localhost:5432/db{% when 'mysql' %}mysql://user:pass@localhost:3306/db{% when 'sqlite' %}sqlite://./test.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=...;privateKey=...{% when 'nbase' %}nbase://localhost:1307{% else %}sqlserver://localhost:1433;database=mydb;user=sa;password=pass{% endcase %}" npm run test:live</code>
+</p>
+
 The [`an5example`](https://github.com/an5ORM/an5example) repository is the reference
 example for the an5 ORM ecosystem. It contains the full CRUD + relations integration
 suite, runnable examples for every generated client language, browser support, and a
 live database harness.
 
-```
+```text
 an5example/
 ├── schema/                  # .an5 model definitions
 ├── generated/               # Generated clients: typescript/ python/ golang/ dotnet/ rust/

@@ -107,7 +107,7 @@ When running **AN5: Install MCP Server** or inspecting via **AN5: Show MCP Serve
       "type": "stdio",
       "command": "/usr/bin/node",
       "args": [
-        "~/.vscode/extensions/an5orm.an5-orm-vscode-1.0.6/dist/mcp/server.js"
+        "~/.vscode/extensions/an5orm.an5-orm-vscode-1.2.0/dist/mcp/server.js"
       ],
       "cwd": "${workspaceFolder}"
     }
@@ -115,7 +115,7 @@ When running **AN5: Install MCP Server** or inspecting via **AN5: Show MCP Serve
 }
 ```
 
-> **Runtime Execution Note**: The server uses Node.js to launch the script. System Node and version manager binaries (`nvm`, `fnm`, `volta`, `asdf`) are fully supported.
+> **Runtime Execution Note**: The server uses Node.js to launch the script. System Node and version manager binaries (`nvm`, `fnm`, `volta`, `asdf`) are fully supported. When running inside VS Code, the extension automatically discovers the host runtime path.
 
 ---
 
@@ -196,7 +196,7 @@ Tools are organized into two distinct safety tiers:
 | `an5_generate_client` | `language: string`, `outputDir?: string`, `confirm: boolean` | Triggers the code generator for `typescript`, `python`, `dotnet`, `golang`, or `rust`. |
 | `an5_push_schema` | `confirm: boolean` | Executes an additive schema sync (`db:push`) to create tables and add missing columns. |
 | `an5_pull_schema` | `confirm: boolean` | Overwrites local `.an5` schemas with introspected database structure (`db:pull`). |
-| `an5_migrate` | `action: string`, `steps?: number`, `dryRun?: boolean`, `confirm: boolean` | Manages schema migrations: `diff`, `generate`, `apply`, `rollback`, or `status`. |
+| `an5_migrate` | `action: string`, `steps?: number`, `preview?: boolean`, `confirm: boolean` | Manages schema migrations: `diff`, `generate`, `apply`, `rollback`, or `status`. |
 | `an5_seed` | `confirm: boolean` | Populates the connected database using the project seed script (`db:seed`). |
 
 ---
@@ -244,3 +244,34 @@ Add the server definition:
 - **SQL Guardrails**: `an5_query_database` blocks schema-altering statements, chained semicolons, and write queries.
 - **Protocol Separation**: Standard output (`stdout`) is strictly reserved for JSON-RPC MCP messages. Diagnostic outputs and warnings are redirected to `stderr` (`[an5-orm-mcp]`) to prevent protocol corruption.
 - **Mandatory Human Confirmation**: Destructive operations cannot be executed autonomously by an AI agent; the parameter `confirm: true` must be explicitly approved.
+
+---
+
+## 6. Extension UI & Agent Skills Sync
+
+Beyond the MCP server, the `an5-orm-vscode` extension provides dedicated developer tools in the Activity Bar:
+
+### Activity Bar Views
+
+- **Connections (`an5.connections`)**: Securely manage database profiles. Test live connections, set active profile for tasks and debug terminals, or remove stale credentials.
+- **Schema Explorer (`an5.schema`)**: Inspect parsed `.an5` models, primary keys, fields, and relations directly in the sidebar tree.
+- **Project Actions (`an5.actions`)**: Fast one-click shortcuts for `an5 generate`, `an5 push`, `an5 pull`, and MCP installation.
+
+### Agent Skills Synchronization
+
+Running **AN5: Sync Agent Skills** (`an5.agentSkills.sync`) automatically provisions repository agent context:
+1. Copies the managed ORM instructions template to `.agents/skills/an5-orm/SKILL.md`.
+2. Inspects `an5Orm.config.js` and `package.json` npm scripts.
+3. Updates the `<!-- AN5 agent context: start -->` block in `AGENTS.md` so coding assistants immediately recognize local project conventions without leaking credentials.
+
+## Application code from a user request
+
+Call `an5_generate_code` with `request` and optional `language`. It returns schema, configured client location and generated API references for the calling AI model to write the requested snippet. It does not invoke a separate LLM or write application files. Choose the language explicitly in multilingual workspaces. The installed ORM must export `prepareCodeRequest`; older builds report an upgrade error.
+
+## Configure project paths and sign in to Google Sheets
+
+The connection manager includes **Project configuration** for editing schema and client output paths without manually rewriting the ORM config. It preserves existing custom settings and writes a managed path block. Saving settings does not run generation or change the database.
+
+Choose **Sheets**, then import a Google Desktop OAuth client JSON or enter the Client ID in **Google OAuth application setup**. Enable Sheets API and Drive API and configure consent/test users in your Google Cloud application. Click **Sign in with Google** and select a spreadsheet from the account. Tokens and OAuth client settings stay in VS Code SecretStorage, and the updated Sheets adapter refreshes access automatically.
+
+The Google flow requests spreadsheet read/write access and Drive metadata to list files. It currently needs a local VS Code window: remote/Codespace extension hosts can continue using service accounts. A real OAuth client must be configured before testing with a Google account.

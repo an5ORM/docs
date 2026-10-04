@@ -1,12 +1,12 @@
 ---
 layout: page
 title: AI Agent Tools
-description: 7 intelligent tools for database operations and task management
+description: 8 intelligent tools for database operations and task management
 ---
 
 # AI Agent Tools
 
-an5 Agent provides **7 consolidated tools** for schema exploration, query generation, database operations, and task management.
+an5 Agent provides **8 consolidated tools** for schema exploration, query generation, database operations, and task management.
 
 In VS Code, the same capabilities are reachable without writing any integration code: the [an5OrmVScode](https://github.com/an5ORM/an5OrmVScode) extension ships an [MCP server]({{ '/guides/vscode-mcp/' | relative_url }}) exposing schema tools, read-only queries and the schema operations to Copilot and other MCP clients. It registers itself — run `MCP: List Servers` and start **AN5 ORM** — or run **AN5: Install MCP Server** to write the config file.
 
@@ -18,6 +18,7 @@ In VS Code, the same capabilities are reachable without writing any integration 
 | `query` | generate, explain, validate | Work with SQL queries |
 | `database` | execute, describe, health | Database operations |
 | `generateClientCode` | - | Generate client code |
+| `generateCode` | - | Request-specific application code through a model callback, or schema/API context for the calling model |
 | `analyzeSchema` | - | Analyze schema issues |
 | `retrieve` | schema, queries | Semantic search |
 | `task` | create, list, update, delete | Manage tasks |
@@ -316,3 +317,22 @@ console.log(result.answer);
 3. **Read from schema** - `database describe` reads from `.an5` files first
 4. **Use parameterized queries** - Prevent SQL injection
 5. **Check health** - Verify connection before operations
+
+## generateCode
+
+Accepts `request`, optional `language` (`auto`, `typescript`, `python`, `dotnet`, `golang`, `rust`), `projectRoot` and `schemaPath`. Automatic detection uses manifests directly in the selected project directory. Missing or multiple language markers require an explicit language.
+
+The tool returns schema models, the configured client output directory and real generated API references. Configure `ToolContext.generateCode` with your application's model callback to return application code. Without a callback it returns `status: context_ready`; it does not pretend a snippet has been generated. Returned code is uncompiled and must be validated by the application. It never writes application files or executes SQL.
+
+```ts
+await agent.executeTool('generateCode', {
+  request: 'Write a function that lists User email addresses',
+  projectRoot: '/path/to/app',
+  schemaPath: 'an5Schema',
+  language: 'typescript',
+}, {
+  generateCode: async context => yourModel(JSON.stringify(context)),
+});
+```
+
+`yourModel` is supplied by the application. Vietnamese code requests are also supported by `agent.process`. Requires an ORM build exporting `prepareCodeRequest`.

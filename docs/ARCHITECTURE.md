@@ -42,14 +42,14 @@ flowchart TB
 | Repo | Role | Key Capabilities |
 |------|------|------------------|
 | **an5Orm** | Schema, Generator & Migrations | Schema parser, multi-language code generator, database introspection (`pull.ts`), schema push (`push.ts`), migrations (`migrate.ts`), and seeder runner |
-| **an5Client** | Generated artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client |
+| **an5Client** | Generated artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, and Rust models/client crate |
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
   Dev["Developer writes .an5<br/>(Schema definitions)"] --> Gen["an5Orm/generator<br/>(Multi-language generator)"]
-  Gen --> Client["an5Client/<br/>(TS · Python · .NET · Go models)"]
+  Gen --> Client["an5Client/<br/>(TS · Python · .NET · Go · Rust)"]
   Client --> Adapters["an5Adapters/<br/>(DB runtimes & metadata)"]
   Adapters --> Agent["an5Agent/<br/>(7 schema-driven tools)"]
   Agent --> Cli["an5Cli/<br/>(Workspace orchestration)"]
@@ -90,7 +90,8 @@ flowchart LR
 ### Code Generation (2 tools)
 | Tool | Description |
 |------|-------------|
-| `generateClientCode` | Generate TS/Python/.NET/Go client code |
+| `generateClientCode` | Generate TS/Python/.NET/Go/Rust client code |
+| `generateCode` | Schema-grounded application code or context for the calling model |
 | `analyzeSchema` | Analyze schema for design issues |
 
 ### RAG (1 tool with 2 actions)
@@ -166,5 +167,5 @@ flowchart TD
 The bridge works by:
 1. `an5Tasks` defines Genkit tools with `ai.defineTool()`
 2. `an5Agent/src/tools/task-tools.ts` consolidates 4 tools into 1 `task` tool
-3. `an5Agent` registers all 7 tools in `DEFAULT_TOOLS`
+3. `an5Agent` registers all 8 tools in `DEFAULT_TOOLS`
 4. `process()` matches natural language → routes to appropriate tool/action

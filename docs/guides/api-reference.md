@@ -574,6 +574,8 @@ The package also exposes scoped entry points:
 | `@an5/adapters/python` | Packaged Python adapter facade source |
 | `@an5/adapters/dotnet` | Packaged .NET adapter facade source |
 | `@an5/adapters/golang` | Packaged Go adapter facade source |
+| `@an5/adapters/rust` | Packaged Rust adapter Cargo crate |
+| `@an5/adapters/nbase` | NBase dialect adapter |
 
 ### Sheets config (`An5SheetsAdapterConfig`)
 
@@ -586,6 +588,38 @@ The package also exposes scoped entry points:
 | `accessToken?` | `string` | OAuth access token (browser mode) |
 | `apiKey?` | `string` | Google API key (browser mode) |
 | `sheetMapping?` | `Record<string, string>` | Model → sheet name mapping (defaults to model name) |
+
+### Browser Adapters API (`@an5/adapters/browser`)
+
+The `@an5/adapters/browser` entrypoint provides zero-dependency browser-safe database adapters for Web Browsers, WASM, and Client Components.
+
+#### `createBrowserSqliteAdapter`
+
+Creates a type-safe AN5 ORM adapter for in-browser SQLite execution drivers (such as `sql.js`, WASM, OPFS, or Capacitor/Expo SQLite).
+
+```typescript
+import { createBrowserSqliteAdapter } from '@an5/adapters/browser';
+
+const adapter = createBrowserSqliteAdapter({
+  driver: {
+    exec: (sql: string, params?: any[]) => rows
+  },
+  dialect: 'sqlite'
+});
+```
+
+#### `An5SheetsAdapter` / `createAn5SheetsAdapter`
+
+Creates a browser-safe Google Sheets database adapter.
+
+```typescript
+import { createAn5SheetsAdapter } from '@an5/adapters/browser';
+
+const sheetsDb = createAn5SheetsAdapter({
+  spreadsheetId: 'YOUR_SHEET_ID',
+  accessToken: 'YOUR_OAUTH_TOKEN' // or apiKey: 'YOUR_API_KEY'
+});
+```
 
 ---
 
@@ -611,7 +645,7 @@ Registers the 7 default tools unless overridden; custom tools can be appended.
 | `getTool(name)` | `Tool \| undefined` | Get tool by name |
 | `addTool(tool)` | `void` | Register a new tool |
 
-### Tools (7 consolidated)
+### Tools (8 consolidated)
 
 | Tool | Actions | Description |
 |------|---------|-------------|
@@ -619,6 +653,7 @@ Registers the 7 default tools unless overridden; custom tools can be appended.
 | `query` | generate, explain, validate | Work with SQL queries |
 | `database` | execute, describe, health | Database operations |
 | `generateClientCode` | - | Generate client code |
+| `generateCode` | - | Request-specific application code through a model callback, or schema/API context for the calling model |
 | `analyzeSchema` | - | Analyze schema issues |
 | `retrieve` | schema, queries | Semantic search |
 | `task` | create, list, update, delete | Manage tasks |
@@ -627,43 +662,9 @@ For detailed tool documentation, see [AI Agent Tools]({{ '/guides/agent-tools/' 
 
 ---
 
-## CLI Commands
+## CLI & Automation Commands
 
-Schema/database commands run as npm scripts from the `an5Orm/` repository directory (no standalone `an5` CLI binary is shipped).
-
-## Browser Adapters API (`@an5/adapters/browser`)
-
-The `@an5/adapters/browser` entrypoint provides zero-dependency browser-safe database adapters for Web Browsers, WASM, and Client Components.
-
-### `createBrowserSqliteAdapter`
-
-Creates a type-safe AN5 ORM adapter for in-browser SQLite execution drivers (such as `sql.js`, WASM, OPFS, or Capacitor/Expo SQLite).
-
-```typescript
-import { createBrowserSqliteAdapter } from '@an5/adapters/browser';
-
-const adapter = createBrowserSqliteAdapter({
-  driver: {
-    exec: (sql: string, params?: any[]) => rows
-  },
-  dialect: 'sqlite'
-});
-```
-
-### `An5SheetsAdapter` / `createAn5SheetsAdapter`
-
-Creates a browser-safe Google Sheets database adapter.
-
-```typescript
-import { createAn5SheetsAdapter } from '@an5/adapters/browser';
-
-const sheetsDb = createAn5SheetsAdapter({
-  spreadsheetId: 'YOUR_SHEET_ID',
-  accessToken: 'YOUR_OAUTH_TOKEN' // or apiKey: 'YOUR_API_KEY'
-});
-```
-
----
+Schema/database workflows run as npm scripts from the `an5Orm/` directory or workspace root, while delivery, tunneling, and dashboard operations run via `an5-cli` (`npx an5-cli`).
 
 ### Schema Management
 
@@ -675,8 +676,8 @@ const sheetsDb = createAn5SheetsAdapter({
 | `npm run db:seed` | Seed database with sample data |
 | `npm run db:migrate diff` | Compare schema with database |
 | `npm run db:migrate:generate` | Generate migration SQL |
-| `npm run db:migrate:apply` | Apply pending migration files; pass `-- --dry-run` to preview SQL |
-| `npm run db:migrate:rollback` | Roll back the latest applied migration; pass `-- --dry-run`, `-- 3`, or `-- --to <file>` |
+| `npm run db:migrate:apply` | Apply pending migration files; pass `-- --preview` to preview SQL |
+| `npm run db:migrate:rollback` | Roll back the latest applied migration; pass `-- --preview`, `-- 3`, or `-- --to <file>` |
 | `npm run db:migrate:status` | Show migration status |
 
 ### Development
@@ -695,7 +696,7 @@ The following are workspace-root scripts (run from the repository root, not from
 
 | Command | Description |
 |---------|-------------|
-| `npm run dryrun` | Preview release changes |
+| `npm run preview` | Preview release changes |
 | `npm run release` | Release across the workspace |
 
 For more CLI commands, see [CLI Commands]({{ '/guides/cli/' | relative_url }}).

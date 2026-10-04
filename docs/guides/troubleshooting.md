@@ -1,174 +1,70 @@
 ---
 layout: page
 title: Troubleshooting
-description: Solutions and troubleshooting guides for common database connections, schema validation, query execution, and code generation issues in AN5 ORM.
+description: Diagnostic guides, solutions, and resolutions for database connections and schema errors
 ---
 
 # Troubleshooting
 
-Solutions to common issues with an5 ORM.
+Solutions to common issues with database connections, schema validation, and runtime execution in an5 ORM.
+
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+
+<p class="guide-note">
+  <strong>Active Context:</strong> Troubleshooting for <strong>{{ code | capitalize }}</strong> on <strong>{{ provider | capitalize }}</strong>.
+</p>
 
 ## Connection Issues
 
-### Cannot Connect to Database
+### 1. Connection Refused or Host Unreachable
 
-**Error:** `Connection refused` or `ECONNREFUSED`
+**Symptom:** `ECONNREFUSED`, `Connection refused`, or timeout trying to open database connection.
 
-**Solution:**
-1. Verify database server is running
-2. Check connection string format
-3. Ensure firewall allows connection
-4. Verify credentials
+**Diagnostic Checklist:**
+1. Confirm the database service is running on the host and port.
+2. Verify network firewalls allow incoming traffic from your application IP.
+3. Validate connection string syntax for **{{ provider | capitalize }}**:
 
 ```ini
-# Correct format
-DATABASE_URL=sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword
-
-# With encryption (Azure SQL)
-DATABASE_URL=sqlserver://server.database.windows.net:1433;database=mydb;user=admin;password=pass;encrypt=true
+# Valid connection format for {{ provider | capitalize }}
+DATABASE_URL={% case provider %}{% when 'postgresql' %}postgres://user:password@localhost:5432/dbname?sslmode=disable{% when 'sqlserver' %}sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword;trustServerCertificate=true{% when 'mysql' %}mysql://user:password@localhost:3306/mydb{% when 'sqlite' %}sqlite:///absolute/path/to/database.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=...{% when 'nbase' %}nbase://localhost:1307?token=secret{% endcase %}
 ```
 
-### Connection Timeout
+{% case provider %}
+{% when 'postgresql' %}
+**PostgreSQL specific notes:**
+- Check `pg_hba.conf` allows connections from your client IP.
+- When connecting to cloud instances (RDS, Supabase, Neon), append `?sslmode=require`.
+- If vector queries fail, ensure extension is enabled: `CREATE EXTENSION IF NOT EXISTS vector;`.
+{% when 'sqlserver' %}
+**SQL Server specific notes:**
+- If connecting with self-signed TLS certificates, append `;trustServerCertificate=true`.
+- Verify the SQL Server Browser service and TCP/IP protocol are enabled in SQL Server Configuration Manager.
+{% when 'mysql' %}
+**MySQL specific notes:**
+- If connecting with MySQL 8 `caching_sha2_password`, ensure the client driver supports modern auth or alter user to `mysql_native_password`.
+{% when 'sqlite' %}
+**SQLite specific notes:**
+- Ensure the parent directory has write permissions for the application process.
+- If getting `SQLITE_BUSY`, enable WAL mode (`PRAGMA journal_mode=WAL;`) for concurrent read/write access.
+{% when 'googlesheets' %}
+**Google Sheets specific notes:**
+- If receiving `403 Forbidden`, ensure the target Google Spreadsheet is shared with the service account email (`clientEmail`) with Editor permissions.
+- Ensure private key newlines (`\n`) in `.env` are URL-encoded or preserved properly.
+{% when 'nbase' %}
+**NBase specific notes:**
+- Verify NBase vector daemon is running and listening on port 1307.
+{% endcase %}
 
-**Error:** `Connection acquire timeout`
+---
 
-**Solution:**
-```typescript
-import { createAn5Adapter } from '@an5/adapters';
+## Connection Diagnostic Test
 
-const db = createAn5Adapter({
-  connectionString: process.env.DATABASE_URL!,
-});
-await db.$connect();
-```
+Run a quick connection health test using your active language:
 
-### Too Many Connections
-
-**Error:** `Login failed for user` or connection limit reached
-
-**Solution:**
-```typescript
-import { createAn5Adapter } from '@an5/adapters';
-
-const db = createAn5Adapter({
-  connectionString: process.env.DATABASE_URL!,
-});
-```
-
-## Schema Issues
-
-### Table Already Exists
-
-**Error:** `Table already exists`
-
-**Solution:**
-- Use `IF NOT EXISTS` in migrations
-- Check schema before creating
-
-```typescript
-await db.$executeRaw`
-  CREATE TABLE IF NOT EXISTS users (
-    id NVARCHAR(1000) PRIMARY KEY,
-    email NVARCHAR(255) UNIQUE
-  )
-`;
-```
-
-### Column Type Mismatch
-
-**Error:** `Invalid column type`
-
-**Solution:**
-- Verify schema matches database
-- Use correct SQL Server types
-
-| Schema Type | SQL Server |
-|-------------|------------|
-| `NVARCHAR(n)` | nvarchar |
-| `INT` | int |
-| `DATETIME2` | datetime2 |
-| `BIT` | bit |
-
-### Unique Constraint Violation
-
-**Error:** `Unique constraint violation`
-
-**Solution:**
-```typescript
-// Check if exists before creating
-const existing = await db.user.findUnique({
-  where: { email: 'john@example.com' }
-});
-
-if (existing) {
-  // Update instead
-  await db.user.update({
-    where: { email: 'john@example.com' },
-    data: { name: 'John Updated' }
-  });
-} else {
-  // Create new
-  await db.user.create({
-    data: { email: 'john@example.com', name: 'John' }
-  });
-}
-```
-
-## Query Issues
-
-### No Results Found
-
-**Possible causes:**
-- Data doesn't exist
-- Wrong filter conditions
-- Case sensitivity
-
-**Solution:**
-```typescript
-// Debug: log the query
-console.log('Filter:', { where: { email: 'john@example.com' } });
-
-const user = await db.user.findFirst({
-  where: { email: 'john@example.com' }
-});
-
-console.log('Result:', user);
-```
-
-### Type Errors
-
-**Error:** `Type 'string' is not assignable to type 'number'`
-
-**Solution:**
-```typescript
-// Ensure correct types
-const user = await db.user.create({
-  data: {
-    age: parseInt('25')  // Convert string to number
-  }
-});
-```
-
-### Relation Not Included
-
-**Error:** `Cannot read property of undefined`
-
-**Solution:**
-```typescript
-// Include the relation
-const user = await db.user.findUnique({
-  where: { id: 'user-id' },
-  include: { posts: true }  // Add this
-});
-
-console.log(user.posts);  // Now available
-```
-
-## Performance Issues
-
-### Slow Queries
-
-**Solution:**
+{% case code %}
+{% when 'typescript' %}
 ```typescript
 import { createAn5Adapter } from '@an5/adapters';
 
@@ -176,139 +72,99 @@ const db = createAn5Adapter({
   connectionString: process.env.DATABASE_URL!,
 });
 
-// Add indexes
-await db.$executeRaw('CREATE INDEX idx_email ON users(email)');
-```
-
-### Memory Leaks
-
-**Solution:**
-```typescript
-import { createAn5Adapter } from '@an5/adapters';
-
-// Always disconnect when done
-async function main() {
-  const db = createAn5Adapter({
-    connectionString: process.env.DATABASE_URL!,
-  });
+try {
   await db.$connect();
-  
-  try {
-    // Use db
-  } finally {
-    await db.$disconnect();
-  }
+  console.log('Connected successfully to {{ provider | capitalize }}');
+  await db.$disconnect();
+} catch (error) {
+  console.error('Connection failed:', error);
 }
 ```
 
-### N+1 Query Problem
+{% when 'python' %}
+```python
+import os
+from an5_adapter import create_an5_adapter
 
-**Solution:**
-```typescript
-// Bad: N+1 queries
-const users = await db.user.findMany();
-for (const user of users) {
-  user.posts = await db.post.findMany({
-    where: { authorId: user.id }
-  });
+try:
+    db = create_an5_adapter(os.environ["DATABASE_URL"])
+    print("Connected successfully to {{ provider | capitalize }}")
+except Exception as error:
+    print(f"Connection failed: {error}")
+```
+
+{% when 'dotnet' %}
+```csharp
+using System;
+using an5Adapters.Dotnet;
+
+try {
+    var adapter = new An5Adapter(Environment.GetEnvironmentVariable("DATABASE_URL")!);
+    Console.WriteLine("Connected successfully to {{ provider | capitalize }}");
+} catch (Exception ex) {
+    Console.WriteLine($"Connection failed: {ex.Message}");
 }
-
-// Good: Include relations
-const users = await db.user.findMany({
-  include: { posts: true }
-});
 ```
 
-## Build Issues
+{% when 'golang' %}
+```go
+package main
 
-### TypeScript Errors
+import (
+    "fmt"
+    "os"
+    "github.com/an5ORM/an5Adapters/golang"
+)
 
-**Error:** `Cannot find module '@an5/orm'`
-
-**Solution:**
-```bash
-# Install the published ORM package
-npm install @an5/orm
-
-# Verify the package resolves
-node -e "require('@an5/orm')"
+func main() {
+    adapter, err := an5adapters.NewAn5Adapter(os.Getenv("DATABASE_URL"))
+    if err != nil {
+        fmt.Printf("Connection failed: %v\n", err)
+        return
+    }
+    defer adapter.Close()
+    fmt.Println("Connected successfully to {{ provider | capitalize }}")
+}
 ```
 
-### Generation Fails
+{% when 'rust' %}
+```rust
+use an5_adapters::An5Adapter;
 
-**Error:** `Schema parse error`
-
-**Solution:**
-1. Check `.an5` file syntax
-2. Validate field types
-3. Run format command
-
-```bash
-npx an5-cli format schema/
-npm run generate   # from an5Orm/
+#[tokio::main]
+async fn main() {
+    let conn_str = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    match An5Adapter::connect(&conn_str).await {
+        Ok(_) => println!("Connected successfully to {{ provider | capitalize }}"),
+        Err(err) => eprintln!("Connection failed: {}", err),
+    }
+}
 ```
 
-## Environment Issues
+{% endcase %}
 
-### .env Not Loading
+---
 
-**Solution:**
-1. Ensure `.env` is in project root
-2. Check file name (no spaces)
-3. Restart application
+## Schema & Code Generation Issues
 
-```bash
-# Verify file exists
-ls -la .env
+### 1. Type Mismatch in Schema
 
-# Check content
-cat .env
-```
+**Error:** `Invalid field type 'X' for provider 'Y'`
 
-### Wrong Node Version
+**Cause:** The schema `.an5` uses a type specific to another database dialect (e.g. `BIT` on SQLite or `BOOLEAN` on SQL Server).
 
-**Error:** `SyntaxError` or unexpected behavior
+**Solution:** Align field types in `an5Schema/` with the dialect rules of **{{ provider | capitalize }}**:
+- Consult the [Field Types]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/schema/' | relative_url }}#field-types) reference for valid types per provider.
 
-**Solution:**
-```bash
-# Check version
-node --version  # Should be 18+
+### 2. Output Directory Not Found
 
-# Use nvm
-nvm use 24
-npm install
-```
+**Error:** `Directory does not exist for generator output`
 
-## Debug Mode
+**Solution:** `an5Orm` generates directories automatically. Ensure your user has filesystem write permissions in the workspace and verify `outputs` paths in `an5Orm.config.js`.
 
-Enable debug logging:
+---
 
-```bash
-# Set debug level
-export LOG_LEVEL=debug
+## Next Steps
 
-# Or in .env
-LOG_LEVEL=debug
-```
-
-```typescript
-// Uses DATABASE_URL from the environment; set LOG_LEVEL=debug for verbose query logging
-const db = new An5ORM();
-```
-
-## Getting Help
-
-1. **Check logs** - Enable debug logging
-2. **Search issues** - GitHub Issues
-3. **Community** - Discord/Slack
-4. **Documentation** - This site
-
-## Known Error Codes
-
-| Code | Description | Solution |
-|------|-------------|----------|
-| P2002 | Unique constraint violation | Check for duplicate values |
-| P2003 | Foreign key constraint | Check related records |
-
-These are raised as `An5ClientKnownRequestError` from `@an5/orm`. Other failures
-surface as the underlying driver error (or a plain `Error` for records not found).
+- [Database Providers]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/providers/' | relative_url }}) - Full dialect specifications
+- [Deployment]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/deployment/' | relative_url }}) - Production security and pooling setup

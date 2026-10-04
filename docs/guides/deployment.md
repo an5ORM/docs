@@ -1,234 +1,185 @@
 ---
 layout: page
 title: Deployment
-description: Deploy your an5 application to production
+description: Production deployment guidelines, environment configuration, and container setups
 ---
 
 # Deployment
 
-Deploy an5 applications to various production environments.
+Guidelines for deploying applications powered by an5 ORM across cloud providers and containerized environments.
+
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+
+<p class="guide-note">
+  <strong>Active Context:</strong> Deploying <strong>{{ code | capitalize }}</strong> application with <strong>{{ provider | capitalize }}</strong> database.
+</p>
 
 ## Production Checklist
 
-Before deploying:
+Before going live:
 
-- [ ] Set `DATABASE_URL` environment variable
-- [ ] Configure connection pooling
-- [ ] Enable HTTPS / encryption for database connections
-- [ ] Set appropriate log level
-- [ ] Configure backup strategy
-- [ ] Test with production-like data
+- [ ] Set `DATABASE_URL` securely via cloud environment secrets manager.
+- [ ] Configure connection pooling limits appropriate for your container concurrency.
+- [ ] Enable TLS/SSL connection encryption (`sslmode=require`, `encrypt=true`).
+- [ ] Run automated health check before accepting traffic.
+- [ ] Verify automated database backup and disaster recovery schedules.
 
-## Environment Setup
+---
 
-### Environment Variables
+## Environment Configuration
+
+### Production Connection String
+
+Set `DATABASE_URL` according to your target cloud database provider:
 
 ```ini
-# Production database
-DATABASE_URL=sqlserver://your-server.database.windows.net:1433;database=proddb;user=admin;password=secure-password;encrypt=true
+# Production DATABASE_URL (Active: {{ provider | capitalize }})
+DATABASE_URL={% case provider %}{% when 'postgresql' %}postgres://prod_user:StrongPassword@db-cluster.us-east-1.rds.amazonaws.com:5432/prod_db?sslmode=require{% when 'sqlserver' %}sqlserver://sql-server.database.windows.net:1433;database=proddb;user=cloudsa;password=StrongPassword!;encrypt=true;trustServerCertificate=false{% when 'mysql' %}mysql://admin:StrongPassword@db.us-east-2.rds.amazonaws.com:3306/prod_db?ssl={"rejectUnauthorized":true}{% when 'sqlite' %}sqlite:///data/production.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=service-account@project.iam.gserviceaccount.com;privateKey=your-encoded-key{% when 'nbase' %}nbase://vector-cluster.internal:1307?token=secret-token{% endcase %}
 
-# Logging
-LOG_LEVEL=warn
-
-# Disable debug features
+# Application environment
 NODE_ENV=production
+LOG_LEVEL=warn
 ```
 
-For spreadsheet-backed apps, point `DATABASE_URL` at a `googlesheets://` connection string:
+### Runtime Initialization
 
-```ini
-DATABASE_URL=googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=url-encoded-key;sheetMapping=users:Users,orders:Orders
-```
-
-### Connection Setup
-
+{% case code %}
+{% when 'typescript' %}
 ```typescript
 import { createAn5Adapter } from "@an5/adapters";
 
-// Uses DATABASE_URL from the environment
 const db = createAn5Adapter({
   connectionString: process.env.DATABASE_URL!,
 });
+
 await db.$connect();
 ```
 
-## Deployment Options
+{% when 'python' %}
+```python
+import os
+from an5_adapter import create_an5_adapter
 
-### Azure App Service
+db = create_an5_adapter(os.environ["DATABASE_URL"])
+```
 
-1. **Create App Service**
+{% when 'dotnet' %}
+```csharp
+using an5Adapters.Dotnet;
 
-   ```bash
-   az webapp create --resource-group myRG --plan myPlan --name myApp
-   ```
+var connStr = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? throw new InvalidOperationException("DATABASE_URL is not set");
+var adapter = new An5Adapter(connStr);
+```
 
-2. **Configure Settings**
+{% when 'golang' %}
+```go
+package main
 
-   ```bash
-   az webapp config appsettings set \
-     --resource-group myRG \
-     --name myApp \
-     --settings DATABASE_URL="sqlserver://..."
-   ```
+import (
+    "os"
+    "github.com/an5ORM/an5Adapters/golang"
+)
 
-3. **Deploy**
-   ```bash
-   git push azure main
-   ```
+func main() {
+    adapter, err := an5adapters.NewAn5Adapter(os.Getenv("DATABASE_URL"))
+    if err != nil {
+        panic(err)
+    }
+    defer adapter.Close()
+}
+```
 
-### AWS Elastic Beanstalk
+{% when 'rust' %}
+```rust
+use an5_adapters::An5Adapter;
 
-1. **Initialize**
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let conn_str = std::env::var("DATABASE_URL")?;
+    let adapter = An5Adapter::connect(&conn_str).await?;
+    Ok(())
+}
+```
 
-   ```bash
-   eb init -p node.js my-app
-   ```
+{% endcase %}
 
-2. **Create Environment**
+---
 
-   ```bash
-   eb create production
-   ```
+## Container Deployment (Docker)
 
-3. **Set Environment Variables**
-
-   ```bash
-   eb setenv DATABASE_URL="sqlserver://..."
-   ```
-
-4. **Deploy**
-   ```bash
-   eb deploy
-   ```
-
-### Docker
-
-**Dockerfile:**
+Multi-stage Dockerfile tailored for your stack:
 
 ```dockerfile
-FROM node:24-alpine
-
+{% case code %}
+{% when 'typescript' %}
+FROM node:20-alpine AS builder
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm ci --only=production
-
+RUN npm ci
 COPY . .
 RUN npm run build
 
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 EXPOSE 3000
-
 CMD ["node", "dist/index.js"]
+{% when 'python' %}
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+{% when 'dotnet' %}
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY *.csproj ./
+RUN dotnet restore
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runner
+WORKDIR /app
+COPY --from=build /app/publish .
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "App.dll"]
+{% when 'golang' %}
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/server .
+EXPOSE 8080
+CMD ["./server"]
+{% when 'rust' %}
+FROM rust:1.78-alpine AS builder
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo build --release
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/target/release/server .
+EXPOSE 8080
+CMD ["./server"]
+{% endcase %}
 ```
 
-**docker-compose.yml:**
+---
 
-```yaml
-version: "3.8"
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=sqlserver://db:1433;database=mydb;user=sa;password=yourpassword
-    depends_on:
-      - db
+## Next Steps
 
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=yourpassword
-    volumes:
-      - mssql-data:/var/opt/mssql
-
-volumes:
-  mssql-data:
-```
-
-### Kubernetes
-
-**deployment.yaml:**
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: my-app
-  template:
-    metadata:
-      labels:
-        app: my-app
-    spec:
-      containers:
-        - name: my-app
-          image: my-app:latest
-          ports:
-            - containerPort: 3000
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: db-secret
-                  key: url
-```
-
-## Database Migrations
-
-The migration commands support schema/database comparison, SQL generation, dry-run SQL previews, pending-file apply tracking, latest-migration rollback, multi-step rollback, and rollback through a named applied file.
-
-### Push Schema
-
-```bash
-npm run db:push   # from an5Orm/
-npm run db:migrate:apply
-npm run db:migrate:rollback
-```
-
-### Pull Schema (Introspection)
-
-```bash
-npm run db:pull   # from an5Orm/
-```
-
-## Monitoring & Health Checks
-
-### Health Check Endpoint
-
-```typescript
-app.get("/health", async (req, res) => {
-  try {
-    await db.$queryRawUnsafe("SELECT 1");
-    res.json({ status: "healthy" });
-  } catch (error: any) {
-    res.status(503).json({ status: "unhealthy", error: error.message });
-  }
-});
-```
-
-## Security
-
-### Connection Security
-
-```ini
-# Use encrypted connection
-DATABASE_URL=sqlserver://server:1433;database=db;encrypt=true;trustServerCertificate=false
-```
-
-### Environment Variables
-
-- Never hardcode credentials
-- Use secret management (Azure Key Vault, AWS Secrets Manager)
-- Rotate credentials regularly
-
-### Network Security
-
-- Use VNet/VPC for database access
-- Restrict IP whitelist
-- Use private endpoints
+- [Troubleshooting]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/troubleshooting/' | relative_url }}) - Connection diagnostics and common error resolutions
+- [Configuration]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/configuration/' | relative_url }}) - Full runtime options reference

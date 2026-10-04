@@ -37,6 +37,14 @@ model Post {
 }
 ```
 
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+
+<p class="guide-note">
+  <strong>Active Context:</strong> Targeting <strong>{{ provider | capitalize }}</strong> with <strong>{{ code | capitalize }}</strong> client generator.
+  Ensure field types in your <code>.an5</code> models align with the {{ provider | capitalize }} dialect requirements below.
+</p>
+
 ### Field Types
 
 Valid types depend on the database you are generating for. The provider is read from

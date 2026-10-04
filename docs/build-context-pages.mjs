@@ -6,7 +6,15 @@ export const providers = {sqlserver: 'SQL Server', postgresql: 'PostgreSQL', mys
 // Generate ordinary Jekyll pages so shared links and refreshes work on Pages.
 const output = 'docs/context-pages';
 fs.mkdirSync(output, {recursive: true});
-for (const guide of ['vector-search', 'queries']) {
+const allGuides = fs.readdirSync('docs/guides')
+  .filter(f => f.endsWith('.md'))
+  .map(f => f.replace('.md', ''));
+
+for (const name of fs.readdirSync(output)) {
+  fs.unlinkSync(`${output}/${name}`);
+}
+
+for (const guide of allGuides) {
   const source = fs.readFileSync(`docs/guides/${guide}.md`, 'utf8');
   for (const code of Object.keys(languages)) {
     for (const provider of Object.keys(providers)) {
@@ -16,8 +24,15 @@ for (const guide of ['vector-search', 'queries']) {
   }
   fs.writeFileSync(`${output}/${guide}-choose.md`, source.replace(/^---\n/, `---\ndocs_variant: true\nsitemap: false\npermalink: /{code}/{provider}/guides/${guide}/\n`));
 }
-// Remove names emitted by the older vector-only generator.
-for (const name of fs.readdirSync(output)) {
-  if (!name.startsWith('vector-search-') && !name.startsWith('queries-')) fs.unlinkSync(`${output}/${name}`);
+
+// Generate root index variants for /{code}/{provider}/
+const indexSource = fs.readFileSync('docs/index.md', 'utf8');
+for (const code of Object.keys(languages)) {
+  for (const provider of Object.keys(providers)) {
+    const page = indexSource.replace(/^---\n/, `---\ndocs_variant: true\ndocs_code: ${code}\ndocs_provider: ${provider}\npermalink: /${code}/${provider}/\n`);
+    fs.writeFileSync(`${output}/index-${code}-${provider}.md`, page);
+  }
 }
-console.log('Generated 60 language/provider guide pages and two chooser routes.');
+fs.writeFileSync(`${output}/index-choose.md`, indexSource.replace(/^---\n/, `---\ndocs_variant: true\nsitemap: false\npermalink: /{code}/{provider}/\n`));
+
+console.log(`Generated ${(allGuides.length + 1) * 30} language/provider pages and ${allGuides.length + 1} chooser routes.`);

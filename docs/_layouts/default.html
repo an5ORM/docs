@@ -203,6 +203,8 @@
       <div class="sidebar-group">
         <div class="sidebar-heading">Reference & Ops</div>
         <ul>
+          <li><a href="{{ '/guides/providers/' | relative_url }}"><i class="fas fa-server"></i> Database Providers</a></li>
+          <li><a href="{{ '/guides/client-languages/' | relative_url }}"><i class="fas fa-code-branch"></i> Client Languages</a></li>
           <li><a href="{{ '/guides/api-reference/' | relative_url }}"><i class="fas fa-book"></i> API Reference</a></li>
           <li><a href="{{ '/guides/architecture/' | relative_url }}"><i class="fas fa-sitemap"></i> Architecture</a></li>
           <li><a href="{{ '/guides/deployment/' | relative_url }}"><i class="fas fa-cloud-upload-alt"></i> Deployment</a></li>
@@ -219,7 +221,41 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="docs-content">
+    {% assign current_guide = '' %}
+    {% if page.url contains '/guides/' %}
+      {% assign current_guide = page.url | split: '/guides/' | last | split: '/' | first %}
+    {% endif %}
+    <main class="docs-content" data-baseurl="{{ site.baseurl }}"{% if current_guide != '' %} data-guide="{{ current_guide }}"{% endif %}>
+      <!-- Header Toolbar: Language & Database Provider Chooser -->
+      <div class="docs-header-bar">
+        <div class="docs-header-selectors">
+          <div class="header-select-item">
+            <label for="headerDocsCode"><i class="fas fa-code"></i> Language</label>
+            <select id="headerDocsCode" class="header-select" aria-label="Select Programming Language">
+              {% assign active_code = page.docs_code | default: 'typescript' %}
+              <option value="typescript" {% if active_code == 'typescript' %}selected{% endif %}>TypeScript</option>
+              <option value="python" {% if active_code == 'python' %}selected{% endif %}>Python</option>
+              <option value="dotnet" {% if active_code == 'dotnet' %}selected{% endif %}>.NET (C#)</option>
+              <option value="golang" {% if active_code == 'golang' %}selected{% endif %}>Go</option>
+              <option value="rust" {% if active_code == 'rust' %}selected{% endif %}>Rust</option>
+            </select>
+          </div>
+
+          <div class="header-select-item">
+            <label for="headerDocsProvider"><i class="fas fa-database"></i> Provider</label>
+            <select id="headerDocsProvider" class="header-select" aria-label="Select Database Provider">
+              {% assign active_provider = page.docs_provider | default: 'sqlite' %}
+              <option value="postgresql" {% if active_provider == 'postgresql' %}selected{% endif %}>PostgreSQL</option>
+              <option value="sqlserver" {% if active_provider == 'sqlserver' %}selected{% endif %}>SQL Server</option>
+              <option value="mysql" {% if active_provider == 'mysql' %}selected{% endif %}>MySQL</option>
+              <option value="sqlite" {% if active_provider == 'sqlite' %}selected{% endif %}>SQLite</option>
+              <option value="googlesheets" {% if active_provider == 'googlesheets' %}selected{% endif %}>Google Sheets</option>
+              <option value="nbase" {% if active_provider == 'nbase' %}selected{% endif %}>NBase</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="docs-body card-glass">
         {{ content }}
       </div>

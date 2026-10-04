@@ -19,7 +19,7 @@ Vector search allows you to find similar items based on semantic meaning rather 
 
 ## Choosing a backend
 
-The TypeScript runtime tries the backends in this order and uses the first one that works. Other runtimes have their own provider support; use the examples for your stack below.
+The TypeScript runtime tries the backends in this order and uses the first one that works. Other runtimes have their own provider support; switch the language and provider in the header toolbar above to see code for your stack.
 
 | Order | Backend | Needs |
 |-------|---------|-------|

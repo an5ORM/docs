@@ -31,6 +31,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout the matching brand assets
+        uses: actions/checkout@v4
+        with:
+          repository: an5ORM/an5Brand
+          ref: 3b2d4b8f49447e8e9d7156454c1ea88f68b3453d
+          path: an5Brand
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -38,6 +45,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Install brand verification dependencies
+        run: npm ci --prefix an5Brand
 
       - name: Check the .an5 syntax grammar & diagrams
         run: npm run test:docs

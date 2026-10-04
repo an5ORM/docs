@@ -1,12 +1,20 @@
 ---
 layout: page
 title: Configuration
-description: Configure an5 ORM for your environment
+description: Configure an5 ORM for your environment, target languages, and database providers
 ---
 
 # Configuration
 
-an5 ORM uses environment variables, schema configuration files, and runtime adapters to customize behavior.
+an5 ORM uses configuration files, environment variables, and runtime adapters to tailor behavior to your architecture.
+
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
+
+<p class="guide-note">
+  <strong>Active Context:</strong> Currently configuring for <strong>{{ code | capitalize }}</strong> with <strong>{{ provider | capitalize }}</strong>.
+  The connection string and client runtime examples below are customized for your selection.
+</p>
 
 ## an5Orm.config.js
 
@@ -17,7 +25,7 @@ module.exports = {
   // Database for db:push, db:pull, db:migrate:* and db:cleanup.
   // DATABASE_URL overrides this, so commit a development database here and
   // let CI set its own. Keep passwords in the environment.
-  connectionString: "sqlserver://localhost:1433;database=mydb;user=sa;password=...",
+  connectionString: {% case provider %}{% when 'postgresql' %}"postgres://user:password@localhost:5432/mydb"{% when 'mysql' %}"mysql://user:password@localhost:3306/mydb"{% when 'sqlite' %}"sqlite://./dev.db"{% when 'googlesheets' %}"googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=..."{% when 'nbase' %}"nbase://localhost:1307"{% else %}"sqlserver://localhost:1433;database=mydb;user=sa;password=..."{% endcase %},
 
   // Schema directory (default: 'an5Schema')
   schemaDir: "an5Schema",
@@ -60,7 +68,7 @@ module.exports = {
 The file is checked before anything uses it, so a mistyped key or a wrong type
 stops generation instead of quietly changing where the output goes:
 
-```
+```text
 ❌ Invalid an5Orm.config.js:
   outputs.typescript.outputDirs  unknown option; did you mean "outputDir"?
   pull.exclude                   expected an array of strings, received string
@@ -69,100 +77,99 @@ stops generation instead of quietly changing where the output goes:
 
 Every problem is reported at once. Each key is known, each value has an expected
 type, and a key that is close to a real one gets a suggestion. The four CLI
-commands and the generator all read the file through this one loader, so they
-cannot disagree about what it means.
+commands and the generator all read the file through this loader.
 
-### Provider
+### Provider Detection
 
-The connection string also picks the database provider, which decides which field
-types the schema may use. `sqlserver://` is SQL Server (also the fallback for
-anything unrecognised), `postgres://`/`postgresql://` PostgreSQL, `mysql://`/
-`mariadb://` MySQL, `sqlite://` or a path ending in `.sqlite`/`.db` SQLite, and
-`googlesheets://` Google Sheets. See [Field Types]({{ '/guides/schema/' | relative_url }}#field-types).
+The connection string scheme selects the database provider and determines allowed schema field types:
 
-```ini
-# PostgreSQL — `INT` in the schema is now rejected, `INTEGER` is the spelling
-DATABASE_URL=postgres://user:password@localhost:5432/mydb
-```
-
-With no connection string the provider is SQL Server, so generating from a config
-without one keeps validating against SQL Server types.
-
-`db:push` writes the DDL of whichever provider the connection string selects, so it
-works on all of them. `db:pull`, `db:migrate:*` and `db:cleanup` still only speak SQL
-Server — they read `sys.*` catalogs and write T-SQL — so pointed at another provider
-they stop with that message rather than running the wrong SQL. `db:seed` is not
-affected either way: it only runs the project's own script.
-
-### Configuration Options
-
-| Option                            | Type       | Default                                 | Description                                 |
-| --------------------------------- | ---------- | --------------------------------------- | ------------------------------------------- |
-| `connectionString`                | `string`   | —                                       | Database for the CLI commands; `DATABASE_URL` overrides it |
-| `schemaDir`                       | `string`   | `'an5Schema'`                           | Path to schema files                        |
-| `outputs.typescript.outputDir`    | `string`   | `'an5Client/typescript'`                | TypeScript output directory                 |
-| `outputs.typescript.metadataFile` | `string`   | `'an5Client/typescript/an5Metadata.ts'` | Metadata file path for the generated client |
-| `outputs.python.metadataFile`     | `string`   | `'an5Client/python/an5_metadata.py'`    | Python metadata path                        |
-| `outputs.dotnet.outputDir`        | `string`   | `'an5Client/dotnet'`                    | .NET output directory                       |
-| `outputs.golang.outputDir`        | `string`   | `'an5Client/golang'`                    | Go output directory                         |
-| `outputs.rust.outputDir`          | `string`   | `'an5Client/rust'`                      | Rust output directory                       |
-| `generation.generateMetadata`     | `boolean`  | `true`                                  | Write the generated metadata module         |
-| `pull.exclude`                    | `string[]` | `['^__', '^sys\\.']`                    | Tables to exclude from pull                 |
-| `pull.preserveRelations`          | `boolean`  | `true`                                  | Keep relations in schema                    |
-
-## Environment Variables
-
-### Database (`DATABASE_URL`)
-
-`DATABASE_URL` takes precedence over `connectionString` in the config file, so
-the same committed config works locally and in CI.
+- `sqlserver://` &rarr; SQL Server
+- `postgres://` or `postgresql://` &rarr; PostgreSQL
+- `mysql://` or `mariadb://` &rarr; MySQL
+- `sqlite://` or `.sqlite`/`.db` path &rarr; SQLite
+- `googlesheets://` &rarr; Google Sheets
+- `nbase://` &rarr; NBase Vector Database
 
 ```ini
-# SQL Server
-DATABASE_URL=sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword
-
-# PostgreSQL
-DATABASE_URL=postgres://user:password@localhost:5432/mydb
-
-# MySQL
-DATABASE_URL=mysql://user:password@localhost:3306/mydb
-
-# SQLite
-DATABASE_URL=sqlite:///path/to/database.db
-
-# Google Sheets
-DATABASE_URL=googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=your-url-encoded-key
-
-# NBase — vector store, no rows of its own
-DATABASE_URL=nbase://localhost:1307
+# Selected provider connection string
+DATABASE_URL={% case provider %}{% when 'postgresql' %}postgres://user:password@localhost:5432/mydb{% when 'mysql' %}mysql://user:password@localhost:3306/mydb{% when 'sqlite' %}sqlite:///path/to/database.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=your-key{% when 'nbase' %}nbase://localhost:1307{% else %}sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword{% endcase %}
 ```
 
-`nbase://host:port` may carry options in the query string:
-`?token=…&timeoutMs=500&method=hnsw`. To search NBase while the rows stay in
-another database, pass the same string as `nbase` next to that database's
-connection string — see [Vector Search]({{ '/guides/vector-search/' | relative_url }}).
+## Runtime Adapter Setup
 
-### LLM Configuration (for an5-cli release notes & agent features)
-
-```ini
-LLM_PROVIDER=openai  # openai, gemini, custom
-LLM_API_KEY=sk-your-api-key
-LLM_MODEL=gpt-4o-mini
-```
-
-## Runtime Adapter Setup (via `@an5/adapters`)
+{% case code %}
+{% when 'typescript' %}
+In TypeScript / Node.js or browser environments:
 
 ```typescript
 import { createAn5Adapter } from "@an5/adapters";
 
 const db = createAn5Adapter({
-  // The runtime reads the environment, not an5Orm.config.js — that file
-  // configures the generator and the CLI commands.
   connectionString: process.env.DATABASE_URL!,
 });
 
 await db.$connect();
 ```
+
+{% when 'python' %}
+In Python applications:
+
+```python
+import os
+from an5_adapter import create_an5_adapter
+
+conn_str = os.getenv("DATABASE_URL", "{% case provider %}{% when 'postgresql' %}postgres://user:pass@localhost:5432/db{% when 'sqlite' %}sqlite:///dev.db{% else %}sqlserver://localhost:1433;database=db{% endcase %}")
+db = create_an5_adapter(conn_str)
+```
+
+{% when 'dotnet' %}
+In .NET (C#) applications:
+
+```csharp
+using an5Adapters.Dotnet;
+
+var connStr = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? "{% case provider %}{% when 'postgresql' %}Host=localhost;Database=db{% when 'sqlite' %}Data Source=dev.db{% else %}Server=localhost;Database=db{% endcase %}";
+var adapter = new An5Adapter(connStr);
+```
+
+{% when 'golang' %}
+In Go services:
+
+```go
+package main
+
+import (
+    "os"
+    "github.com/an5ORM/an5Adapters/golang"
+)
+
+func main() {
+    connStr := os.Getenv("DATABASE_URL")
+    adapter, err := an5adapters.NewAn5Adapter(connStr)
+    if err != nil {
+        panic(err)
+    }
+    defer adapter.Close()
+}
+```
+
+{% when 'rust' %}
+In Rust crates:
+
+```rust
+use an5_adapters::An5Adapter;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let conn_str = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "{% case provider %}{% when 'postgresql' %}postgres://localhost/db{% when 'sqlite' %}sqlite://dev.db{% else %}sqlserver://localhost/db{% endcase %}".into());
+    let adapter = An5Adapter::connect(&conn_str).await?;
+    Ok(())
+}
+```
+
+{% endcase %}
 
 ## LLM & Embedding Runtime Config
 
@@ -187,31 +194,7 @@ setEmbeddingConfig({
 resetAdapter();
 ```
 
-## Docker Configuration
+## Next Steps
 
-### docker-compose.yml
-
-```yaml
-version: "3.8"
-services:
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=yourpassword
-      - MSSQL_PID=Developer
-    ports:
-      - "1433:1433"
-    volumes:
-      - mssql-data:/var/opt/mssql
-
-  app:
-    build: .
-    environment:
-      - DATABASE_URL=sqlserver://db:1433;database=mydb;user=sa;password=yourpassword
-    depends_on:
-      - db
-
-volumes:
-  mssql-data:
-```
+- [Database Providers]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/providers/' | relative_url }}) - Comprehensive database provider guide
+- [Client Languages]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/client-languages/' | relative_url }}) - Multi-language runtime reference

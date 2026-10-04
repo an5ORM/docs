@@ -1,18 +1,105 @@
 ---
 layout: page
 title: CLI Commands
-description: Command-line interface for schema management and development
+description: Comprehensive guide for an5-cli workspace automation and an5Orm schema development commands
 ---
 
 # CLI Commands
 
-`an5-cli` is a workspace/release automation tool for the monorepo. ORM and database operations are run as npm scripts from the `an5Orm/` repository (no standalone `an5` ORM CLI binary is shipped).
+The AN5 ecosystem provides two sets of command-line tools:
+1. **`an5-cli`**: The workspace orchestration, release automation, and local UI tool for monorepo development.
+2. **`an5Orm` npm scripts**: Core ORM schema operations (generation, push, pull, migrations, seeding).
 
-Use [Feature Status]({{ '/guides/feature-status/' | relative_url }}) to see which commands are stable and which migration workflows are still evolving.
+{% assign code = page.docs_code | default: 'typescript' %}
+{% assign provider = page.docs_provider | default: 'sqlite' %}
 
-## Installation
+<p class="guide-note">
+  <strong>Active Context:</strong> Currently configuring commands for <strong>{{ code | capitalize }}</strong> with <strong>{{ provider | capitalize }}</strong>.
+</p>
 
-The workspace/release CLI lives in the `an5Cli/` repository:
+## Core Schema Commands (an5Orm)
+
+Schema and database lifecycle operations run as npm scripts from the `an5Orm/` directory:
+
+```bash
+cd an5Orm
+npm run <command>
+```
+
+### 1. Code Generation (`generate`)
+
+Parses `.an5` schemas in `an5Schema/` and generates type-safe clients across all 5 target languages:
+
+```bash
+# Generate all clients (TypeScript, Python, .NET, Go, Rust)
+npm run generate
+```
+
+**Generated Artifacts:**
+```text
+an5Client/
+├── typescript/     # TypeScript interfaces and metadata (an5Metadata.ts)
+├── python/         # Python dataclasses (an5_client.py, an5_metadata.py)
+├── dotnet/         # .NET entity classes and An5DbContext
+├── golang/         # Go structs and TableClient[T]
+└── rust/           # Rust models and client crate
+```
+
+### 2. Schema Push (`db:push`)
+
+Compares `.an5` definitions with the target database and safely applies additive changes (creates tables, adds missing columns):
+
+```bash
+npm run db:push
+```
+
+### 3. Schema Pull (`db:pull`)
+
+Introspects an existing relational database and reverse-engineers `.an5` model files:
+
+```bash
+npm run db:pull
+```
+
+### 4. Database Seeding (`db:seed`)
+
+Populates the database with test and development data:
+
+```bash
+npm run db:seed
+```
+
+### 5. Migration Management (`db:migrate:*`)
+
+Full lifecycle migration tooling with rollback and status reporting:
+
+```bash
+# Compare schema against database and preview diff
+npm run db:migrate diff
+
+# Generate timestamped SQL migration files
+npm run db:migrate:generate
+
+# Apply pending migrations and record checksums in _an5_migrations
+npm run db:migrate:apply
+npm run db:migrate:apply -- --preview
+
+# Roll back migrations
+npm run db:migrate:rollback
+npm run db:migrate:rollback -- 3
+npm run db:migrate:rollback -- --to 2026-08-11T10-00-00_migration.sql
+
+# Inspect migration history
+npm run db:migrate:status
+```
+
+---
+
+## Workspace & Release CLI (an5-cli)
+
+`an5-cli` automates changelog generation, cross-repo dependency synchronization, Git releases, and local dashboard management.
+
+### Installation
 
 ```bash
 cd an5Cli
@@ -20,297 +107,150 @@ npm install
 npm run build
 ```
 
-This exposes the `an5-cli` binary:
+This registers the `an5-cli` executable:
 
 ```bash
 npx an5-cli --help
 ```
 
-ORM schema/database commands (generate, db:push, …) are npm scripts in `an5Orm/`:
+### 1. Web UI Dashboard (`ui`)
+
+Launches the development dashboard on port 5070 with repository statuses, diff inspectors, build/test buttons, and tunnel support:
 
 ```bash
-cd an5Orm
-npm run <command>
+# Start local UI on port 5070
+npx an5-cli ui
+
+# Launch UI and expose via localtunnel for mobile/remote access
+npx an5-cli ui --tunnel --subdomain my-an5
 ```
 
-## Schema Commands
+### 2. Localtunnel Management (`tunnel`)
 
-Run from the `an5Orm/` repository directory.
-
-### Generate Client Code
-
-Generate type-safe client code from your schema files.
+Expose local services securely for remote testing and webhook debugging:
 
 ```bash
-# Generate all clients (TypeScript, Python, .NET, Go)
-npm run generate
+# Start tunnel on default port 5070
+npx an5-cli tunnel start
+
+# Start tunnel with custom subdomain and port
+npx an5-cli tunnel start --subdomain my-an5 --tunnel-port 5070
+
+# Check tunnel status and stop
+npx an5-cli tunnel status
+npx an5-cli tunnel stop
 ```
 
-**Output:**
-```
-an5Client/
-├── typescript/     # TypeScript interfaces and metadata
-├── python/         # Python dataclasses
-├── dotnet/         # .NET entity classes
-└── golang/         # Go structs and client
-```
+### 3. Cross-Repo Impact Analysis (`impact`)
 
-### Push Schema to Database
-
-Create or update database tables based on your schema.
+Analyzes which downstream repositories and packages are affected by changes in a given component:
 
 ```bash
-# Push schema to database
-npm run db:push
+npx an5-cli impact an5Adapters
 ```
 
-**What it does:**
-- Compares schema with existing database
-- Creates new tables
-- Adds missing columns
-- Preserves existing data
+### 4. Multi-Repo Synchronization (`sync`)
 
-### Pull Schema from Database
-
-Reverse-engineer schema from existing database.
+Rebuilds, runs tests, and updates documentation across all affected repositories:
 
 ```bash
-# Pull schema from database
-npm run db:pull
+# Sync and rebuild all repos affected by an5Orm
+npx an5-cli sync an5Orm
+
+# Skip docs or build steps during rapid iterations
+npx an5-cli sync an5Orm --skip-docs
+npx an5-cli sync an5Orm --skip-build
 ```
 
-**Output:** Creates `.an5` files in `an5Schema/` directory.
+### 5. AI-Assisted Documentation (`doc` & `doc:diff`)
 
-### Seed Database
-
-Populate database with sample data.
+Generates or updates documentation using LLM analysis of code changes:
 
 ```bash
-# Run seed script
-npm run db:seed
+# Generate/improve documentation for a specific file or module
+npx an5-cli doc an5Adapters/typescript/src/an5Adapter.ts
+
+# Automatically update docs based on Git diff
+npx an5-cli doc:diff an5Orm
 ```
 
-### Migrations
+### 6. Schema Formatting (`format`)
+
+Enforces consistent column and attribute alignment across `.an5` files:
 
 ```bash
-# Compare schema with database
-npm run db:migrate diff
-
-# Generate migration SQL
-npm run db:migrate:generate
-
-# Apply pending migration files and record them in _an5_migrations
-npm run db:migrate:apply
-npm run db:migrate:apply -- --dry-run
-
-# Roll back the latest applied migration with a -- migrate:down section
-npm run db:migrate:rollback
-npm run db:migrate:rollback -- --dry-run
-
-# Roll back multiple steps, or through a named applied file
-npm run db:migrate:rollback -- 3
-npm run db:migrate:rollback -- --to 2026-08-11T10-00-00_migration.sql
-
-# Show migration status
-npm run db:migrate:status
+npx an5-cli format an5Schema/
 ```
 
-## Development Commands
+### 7. Task Management (`tasks`)
 
-The development commands below are **workspace-root** scripts — run them from the
-monorepo root (where the root `package.json` lives), not from `an5Orm/`. Only the
-schema/database commands earlier in this page run inside `an5Orm/`.
-
-### Build All Packages
+Integrates with `an5-tasks` for managing development and review work:
 
 ```bash
-npm run build
+# List tasks with optional status and priority filters
+npx an5-cli tasks list
+npx an5-cli tasks list --status todo
+npx an5-cli tasks list --priority high
+
+# Update or delete a task
+npx an5-cli tasks update --id TASK-101 --status done
+npx an5-cli tasks delete --id TASK-101
 ```
 
-### Run Tests
+### 8. Release Automation (`release` & `ws`)
+
+Automates changelog compilation, SemVer bumps, Git tags, and commits:
 
 ```bash
-# Run the full workspace test suite
-npm test
+# Preview changes without modifying Git
+npx an5-cli release --preview
 
-# Run a specific workspace package
-npm run test -w an5Orm
-npm run test -w an5Agent
-```
+# Release a single repository
+npx an5-cli release an5Adapters --push --tag v0.2.5
 
-### Start Local UI
-
-Launch the local development UI.
-
-```bash
-# Start UI on port 5070
-npm run ui
-```
-
-**Features:**
-- Repository status dashboard
-- Git diff viewer
-- Build and test buttons
-- Commit and release workflow
-- LLM configuration
-
-## Release Commands
-
-### Dry Run Release
-
-Preview release changes without committing.
-
-```bash
-npm run dryrun
-```
-
-### Release Workspace
-
-Compile, test, tag, commit, and push submodules.
-
-```bash
-npm run release
-```
-
-Or invoke the workspace automation CLI directly:
-
-```bash
+# Release all modified submodules across the workspace
 npx an5-cli ws . --push
 ```
 
-## an5-cli Commands
+---
 
-### Impact Analysis
+## Configuration
 
-Analyze cross-repo impact from changes.
+### CLI Configuration (`.an5cli.json`)
 
-```bash
-npx an5-cli impact [repo]
+Configure default behaviors in `.an5cli.json`:
+
+```json
+{
+  "defaultTarget": "./an5Orm",
+  "defaultBranch": "main",
+  "preview": false,
+  "push": false,
+  "skipPrompt": false,
+  "tunnel": {
+    "subdomain": "my-an5",
+    "port": 5070
+  }
+}
 ```
 
-### Documentation
+### Environment Variables
 
-Auto-update docs based on changed files.
-
-```bash
-npx an5-cli doc:diff [repo]
-```
-
-### Format Schema Files
-
-Auto-format `.an5` files.
-
-```bash
-npx an5-cli format [path]
-```
-
-### Task Management
-
-```bash
-# List tasks
-npx an5-cli tasks list
-
-# Update task
-npx an5-cli tasks update
-
-# Delete task
-npx an5-cli tasks delete
-```
-
-## Environment Configuration
-
-### Interactive Setup
-
-```bash
-npx an5-cli config
-```
-
-### Direct Configuration
-
-Edit `.env` file:
+Configure database connection and LLM keys in `.env`:
 
 ```ini
-# Database (required)
-DATABASE_URL=sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword
+# Database Connection (Active: {{ provider | capitalize }})
+DATABASE_URL={% case provider %}{% when 'postgresql' %}postgres://user:password@localhost:5432/mydb{% when 'mysql' %}mysql://user:password@localhost:3306/mydb{% when 'sqlite' %}sqlite:///path/to/database.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=sa@project.iam.gserviceaccount.com;privateKey=your-key{% when 'nbase' %}nbase://localhost:1307{% else %}sqlserver://localhost:1433;database=mydb;user=sa;password=yourpassword{% endcase %}
 
-# Optional
-LOG_LEVEL=info
+# LLM Provider for automated commit messages & docs
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-your-api-key
+LLM_MODEL=gpt-4o-mini
 ```
 
-### LLM Configuration
+---
 
-```bash
-# Configure via CLI
-npx an5-cli config
+## Next Steps
 
-# Or set environment variables
-export LLM_PROVIDER=openai
-export LLM_API_KEY=sk-your-api-key
-export LLM_MODEL=gpt-4o-mini
-```
-
-## Common Workflows
-
-### New Project Setup
-
-```bash
-# 1. Install package
-npm install @an5/orm
-
-# 2. Configure database
-# Create .env and set DATABASE_URL
-
-# 3. Generate code (from the an5Orm/ repository)
-npm run generate
-
-# 4. Push schema (from the an5Orm/ repository)
-npm run db:push
-```
-
-### Daily Development
-
-```bash
-# Pull latest changes
-git pull
-
-# Build
-npm run build
-
-# Run tests
-npm test
-
-# Start UI
-npm run ui
-```
-
-### Release Process
-
-```bash
-# 1. Dry run
-npm run dryrun
-
-# 2. Release
-npm run release
-```
-
-### Auto Version Bump
-
-For maintainers publishing npm packages under the `@an5` organization:
-
-```bash
-# Apply patch bumps based on latest npm versions
-node scripts/auto-bump-version.js
-
-# Bump minor or major
-node scripts/auto-bump-version.js minor
-node scripts/auto-bump-version.js major
-```
-
-The default package set is `@an5/adapters` and `@an5/orm`. The script also updates internal dependency ranges, for example `@an5/orm` depending on the new `@an5/adapters` version.
-
-## Tips
-
-- Use `npm run ui` for visual feedback during development
-- Run `npx an5-cli format` to keep schema files consistent
-- Use `npm run generate` (in the `an5Orm/` repo) instead of calling files under `node_modules/@an5/orm`
-- Check `npm run dryrun` before releases
+- [Configuration]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/configuration/' | relative_url }}) - Detail config file options and schema mapping
+- [Getting Started]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/getting-started/' | relative_url }}) - Quickstart guide for {{ code | capitalize }}
