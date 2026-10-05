@@ -193,7 +193,7 @@ Tools are organized into two distinct safety tiers:
 | `an5_describe_table` | `table: string` | Checks the schema model first; if absent, inspects physical database metadata directly. |
 | `an5_database_health` | *(none)* | Performs a round-trip connection probe, reporting connection state and latency in milliseconds. |
 | `an5_query_database` | `sql: string` | Executes read-only queries. Permits single-statement `SELECT` and read-only CTEs (`WITH ... SELECT`). Rejects multi-statements and mutation keywords (`INTO`, `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `CREATE`, `TRUNCATE`, `EXEC`). |
-| `an5_generate_client` | `language: string`, `outputDir?: string`, `confirm: boolean` | Triggers the code generator for `typescript`, `python`, `dotnet`, `golang`, or `rust`. |
+| `an5_generate_client` | `language: string`, `outputDir?: string`, `confirm: boolean` | Triggers the code generator for `typescript`, `python`, `dotnet`, `golang`, `rust`, `java`, `kotlin` or `swift`. |
 | `an5_push_schema` | `confirm: boolean` | Executes an additive schema sync (`db:push`) to create tables and add missing columns. |
 | `an5_pull_schema` | `confirm: boolean` | Overwrites local `.an5` schemas with introspected database structure (`db:pull`). |
 | `an5_migrate` | `action: string`, `steps?: number`, `preview?: boolean`, `confirm: boolean` | Manages schema migrations: `diff`, `generate`, `apply`, `rollback`, or `status`. |

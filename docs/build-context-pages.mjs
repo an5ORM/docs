@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-export const languages = {typescript: 'TypeScript', python: 'Python', dotnet: '.NET (C#)', golang: 'Go', rust: 'Rust'};
+export const languages = {typescript: 'TypeScript', python: 'Python', dotnet: '.NET (C#)', golang: 'Go', rust: 'Rust', java: 'Java', kotlin: 'Kotlin', swift: 'Swift'};
 export const providers = {sqlserver: 'SQL Server', postgresql: 'PostgreSQL', mysql: 'MySQL', sqlite: 'SQLite', googlesheets: 'Google Sheets', nbase: 'NBase'};
 
 // Generate ordinary Jekyll pages so shared links and refreshes work on Pages.
@@ -35,4 +35,7 @@ for (const code of Object.keys(languages)) {
 }
 fs.writeFileSync(`${output}/index-choose.md`, indexSource.replace(/^---\n/, `---\ndocs_variant: true\nsitemap: false\npermalink: /{code}/{provider}/\n`));
 
-console.log(`Generated ${(allGuides.length + 1) * 30} language/provider pages and ${allGuides.length + 1} chooser routes.`);
+// Counted from the maps rather than hardcoded: with three more languages the constant would
+// silently under-report, and a count that disagrees with the files on disk is worse than none.
+const variants = Object.keys(languages).length * Object.keys(providers).length;
+console.log(`Generated ${(allGuides.length + 1) * variants} language/provider pages and ${allGuides.length + 1} chooser routes.`);

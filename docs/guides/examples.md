@@ -11,7 +11,7 @@ description: Run the an5example repository across all languages, dialects, and t
 
 <p class="guide-note">
   <strong>Selected Stack:</strong> Run example for <strong>{{ code | capitalize }}</strong> on <strong>{{ provider | capitalize }}</strong>:<br>
-  Command: <code>{% case code %}{% when 'typescript' %}npm run test:example:ts{% when 'python' %}npm run test:python{% when 'dotnet' %}npm run test:example:dotnet{% when 'golang' %}npm run test:go{% when 'rust' %}npm run test:rust{% endcase %}</code><br>
+  Command: <code>{% case code %}{% when 'typescript' %}npm run test:example:ts{% when 'python' %}npm run test:python{% when 'dotnet' %}npm run test:example:dotnet{% when 'golang' %}npm run test:go{% when 'rust' %}npm run test:rust{% when 'java' %}npm run test:java{% when 'kotlin' %}npm run test:kotlin{% when 'swift' %}npm run test:swift{% endcase %}</code><br>
   Test against live {{ provider | capitalize }}: <code>AN5_DATABASE_URL="{% case provider %}{% when 'postgresql' %}postgres://user:pass@localhost:5432/db{% when 'mysql' %}mysql://user:pass@localhost:3306/db{% when 'sqlite' %}sqlite://./test.db{% when 'googlesheets' %}googlesheets://spreadsheetId;clientEmail=...;privateKey=...{% when 'nbase' %}nbase://localhost:1307{% else %}sqlserver://localhost:1433;database=mydb;user=sa;password=pass{% endcase %}" npm run test:live</code>
 </p>
 
@@ -23,7 +23,7 @@ live database harness.
 ```text
 an5example/
 ├── schema/                  # .an5 model definitions
-├── generated/               # Generated clients: typescript/ python/ golang/ dotnet/ rust/
+├── generated/               # Generated clients: typescript/ python/ golang/ dotnet/ rust/ java/ kotlin/ swift/
 ├── scripts/                 # SQLite setup + per-dialect DDL for the live harness
 ├── test/
 │   ├── crud-suite.js        # Shared, dialect-parameterized CRUD + relations suite
@@ -33,13 +33,19 @@ an5example/
 │   ├── browser-bundle.test.js # esbuild verify @an5/adapters/browser is bundler-safe
 │   ├── go-example-build.js  # go build + vet of the generated Go client
 │   ├── rust-example-build.js # cargo build + run of the generated Rust client
-│   └── dotnet-compile-check.js # dotnet build of the generated C# client
+│   ├── dotnet-compile-check.js # dotnet build of the generated C# client
+│   ├── java-example-build.js # mvn compile + run of the Java example
+│   ├── kotlin-example-build.js # kotlinc build + run of the Kotlin example
+│   └── swift-example-build.js # swift build + run of the Swift example
 └── examples/
     ├── typescript/crud.ts   # TS runtime example (SQLite, offline-runnable)
     ├── golang/               # Generated Go client CRUD against SQLite
     ├── rust/                 # Generated Rust client CRUD against SQLite
     ├── dotnet/               # Generated C# client against SQL Server
-    └── python/crud.py        # Generated Python client (postgres/mssql)
+    ├── python/crud.py        # Generated Python client (postgres/mssql)
+    ├── java/                 # Maven build of the generated Java client + JDBC adapter
+    ├── kotlin/               # Generated Kotlin client + adapter against SQLite
+    └── swift/                # SwiftPM package: generated Swift client + SQLite driver
 ```
 
 ## Running the Full Test Matrix
@@ -62,6 +68,9 @@ npm test
 | `test:example:dotnet` | .NET example run (skips gracefully when SQL Server is unreachable) |
 | `test:python` | Python example import/syntax check |
 | `test:rust` | `cargo build` of the generated Rust client + run the Rust SQLite CRUD example |
+| `test:java` | `mvn compile` of the generated Java client + JDBC adapter, then the Java example |
+| `test:kotlin` | `kotlinc` build of the generated Kotlin client + adapter, then the Kotlin example |
+| `test:swift` | `swift build` + `swift run` of the SwiftPM example over the generated Swift client |
 
 ## Live Database Harness
 
@@ -102,6 +111,16 @@ Each `examples/` language mirrors the generated client for that language:
 - **Python** (`examples/python/crud.py`) — generated Python client; runs a live CRUD
   smoke when `AN5_DATABASE_URL` points at a postgres/mssql database, otherwise an
   import check.
+- **Java** (`examples/java/`) — Maven project that compiles the generated Java client
+  together with the JDBC adapter source and runs the CRUD example against SQLite.
+  First run downloads the SQLite driver and Maven plugins.
+- **Kotlin** (`examples/kotlin/`) — generated Kotlin client and adapter compiled with
+  `kotlinc`, then the same CRUD example against SQLite. No Gradle build is shipped
+  because no environment in CI runs one.
+- **Swift** (`examples/swift/An5Example/`) — SwiftPM package that builds the generated
+  Swift client over the runtime's own SQLite driver and runs the CRUD example. The
+  package sits a directory below `examples/swift` because SwiftPM identifies a package
+  by its directory name, which would otherwise collide with `generated/swift`.
 
 ## VS Code MCP Server
 

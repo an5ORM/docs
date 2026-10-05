@@ -47,13 +47,13 @@ flowchart TB
 |------------|------|------------------|
 | **an5Adapters** | Runtime Execution Engine & Query Builder | Provider-based SQL (MSSQL, Postgres, MySQL, SQLite), Google Sheets, and NBase vector engine execution, Query Builder (`parseWhere`, `buildOrderBy`, `quote`), `executorFromAdapter` bridge, connection pooling, and multi-language sources (TS, Python, .NET, Go, Rust). |
 | **an5Orm** | Schema, Generator & Migrations | Schema parser, multi-language code generator (`generator/`), database introspection (`pull.ts`), schema drift & migrations (`migrate.ts`, `migration-core.ts`), schema push (`push.ts`), and generic seeder runner (`seed.ts`). |
-| **an5Client** | Generated Artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, and Rust models/client crate. |
+| **an5Client** | Generated Artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, Rust models/client crate, Java JavaBeans + `An5DbContext`, Kotlin data classes + `An5Db`, and Swift structs + `An5Db`. |
 | **an5Agent** | AI Agent Library | 7 schema-driven tools: schema, query, database, codegen, retrieve, task, analyzeSchema |
 | **an5Cli** | Workspace Automation & Release | Workspace release (`ws`), changelog generation, LLM-powered commits, local management UI |
 | **an5OrmVScode** | Editor Extension & MCP Server | Syntax highlighting, formatter, snippets for `.an5` files, and native Model Context Protocol (MCP) server. |
 | **an5Schema** | Schema Source | Sample `.an5` model definitions |
 | **an5Tasks** | Task Manager | Genkit v1.42+ flows, LLM review parsing, task CRUD, tools for agent integration |
-| **an5example** | Reference Examples | Multi-dialect CRUD suite, browser (sql.js) support, runnable TypeScript/Go/.NET/Python/Rust client examples |
+| **an5example** | Reference Examples | Multi-dialect CRUD suite, browser (sql.js) support, runnable TypeScript/Go/.NET/Python/Rust/Java/Kotlin/Swift client examples |
 | **an5Site** | Landing Page | Static site source (`index.html` + `style.css` + `main.js`) for https://an5orm.github.io, registered as `an5-site` npm workspace |
 | **an5Docs** | Documentation Site | Jekyll documentation site serving 670+ pages with responsive UI, context switching, and SEO audit tooling |
 

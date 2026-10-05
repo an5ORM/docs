@@ -42,7 +42,7 @@ flowchart TB
 | Repo | Role | Key Capabilities |
 |------|------|------------------|
 | **an5Orm** | Schema, Generator & Migrations | Schema parser, multi-language code generator, database introspection (`pull.ts`), schema push (`push.ts`), migrations (`migrate.ts`), and seeder runner |
-| **an5Client** | Generated artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, and Rust models/client crate |
+| **an5Client** | Generated artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, Rust models/client crate, Java JavaBeans + `An5DbContext`, Kotlin data classes + `An5Db`, and Swift structs + `An5Db` |
 
 ## Data Flow
 

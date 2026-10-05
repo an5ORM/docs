@@ -31,7 +31,7 @@ npm run <command>
 Parses `.an5` schemas in `an5Schema/` and generates type-safe clients across all 5 target languages:
 
 ```bash
-# Generate all clients (TypeScript, Python, .NET, Go, Rust)
+# Generate all clients (TypeScript, Python, .NET, Go, Rust, Java, Kotlin, Swift)
 npm run generate
 ```
 
@@ -210,6 +210,21 @@ npx an5-cli release an5Adapters --push --tag v0.2.5
 
 # Release all modified submodules across the workspace
 npx an5-cli ws . --push
+```
+
+
+Commit messages use current source changes and new files. Generic LLM output falls
+back to file/API summaries; `--message` supplies an explicit message. Changelog
+notes are generated separately. Ordinary commits accumulate `Unreleased` notes;
+`--version` or `--tag` collects commits since the previous release and promotes
+pending notes into a dated entry. For untagged workspace packages, the last
+committed versioned changelog edit supplies the baseline. `--since <ref>` overrides
+it with an ancestor of `HEAD`. Selected-file releases preserve unmatched pending
+notes. `--changelog-file <path>` supplies reviewed notes instead of generated ones.
+
+```bash
+# Preview release notes from a specific previous release
+npx an5-cli release . --version 1.1.0 --since v1.0.0 --preview --skip-llm
 ```
 
 ---

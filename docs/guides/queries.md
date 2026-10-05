@@ -224,17 +224,17 @@ The examples above use `@an5/adapters` for TypeScript. The generated clients cov
 the same ground for the other languages, but **not evenly** — each one is generated
 from the same schema and the query surface differs:
 
-| | TypeScript | Python | .NET | Go | Rust |
-|---|---|---|---|---|---|
-| Read rows | `findMany` | `find_many` | `FindMany` | `FindMany` | `find_many` |
-| Filter | `where` object | `where` dict | SQL predicate | typed structs | typed structs |
-| Sort | `orderBy` | `order_by` | in the SQL you write | `*SortOrder` | `SortOrder` |
-| Paginate | `skip` / `take` | `skip` / `take` | in the SQL you write | `Skip` / `Take` | `skip` / `take` |
-| Select columns | `select` | `select` | — | `Select` | `select` |
-| Load relations | `include` | `include` | — | — | — |
-| Aggregate | `aggregate` | `aggregate` | `Count` only | — | through `table()` |
-| Group by | `groupBy` | `group_by` | — | — | through `table()` |
-| Raw SQL | `$queryRawUnsafe` | `query_raw` | `QueryRaw` | `QueryRaw` | `adapter().query_raw` |
+| | TypeScript | Python | .NET | Go | Rust | Java | Kotlin | Swift |
+|---|---|---|---|---|---|---|---|---|
+| Read rows | `findMany` | `find_many` | `FindMany` | `FindMany` | `find_many` | `findMany` | `findMany` | `findMany` |
+| Filter | `where` object | `where` dict | SQL predicate | typed structs | typed structs | `An5Query.where` | query block | `Query(filter:)` |
+| Sort | `orderBy` | `order_by` | in the SQL you write | `*SortOrder` | `SortOrder` | `An5Query.orderBy` | `orderBy(...)` | `Query.orderBy` |
+| Paginate | `skip` / `take` | `skip` / `take` | in the SQL you write | `Skip` / `Take` | `skip` / `take` | `skip` / `take` | `skip` / `take` | `skip` / `take` |
+| Select columns | `select` | `select` | — | `Select` | `select` | `select` | `select` | `select` |
+| Load relations | `include` | `include` | — | — | — | `include` | `include` | `include` |
+| Aggregate | `aggregate` | `aggregate` | `Count` only | — | through `table()` | `aggregate` | `aggregate` | `aggregate` |
+| Group by | `groupBy` | `group_by` | — | — | through `table()` | `groupBy` | `groupBy` | `groupBy` |
+| Raw SQL | `$queryRawUnsafe` | `query_raw` | `QueryRaw` | `QueryRaw` | `adapter().query_raw` | `queryRaw` | `query` | `query` |
 
 The examples below use the fields of the generated example schema — `User` with
 `id`, `email`, `name`, `createdAt`, and `Order` with `userId`, `total` — so the

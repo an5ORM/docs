@@ -13,7 +13,7 @@ description: A modern, type-safe ORM for SQL Server, PostgreSQL, MySQL, SQLite, 
     <p class="hero-subtitle">A modern, type-safe ORM for <span class="hero-target-lang"><strong>{{ code | capitalize }}</strong></span> with <span class="hero-target-prov"><strong>{{ provider | capitalize }}</strong></span></p>
     <p class="hero-description">
       Build data-driven applications with an intuitive API, type-safe queries, 
-      and powerful features like vector search and AI agent integration across TypeScript, Python, .NET, Golang, and Rust.
+      and powerful features like vector search and AI agent integration across TypeScript, Python, .NET, Golang, Rust, Java, Kotlin, and Swift.
     </p>
     <div class="hero-buttons">
       <a href="{{ '/' | append: code | append: '/' | append: provider | append: '/guides/getting-started/' | relative_url }}" class="btn btn-primary" id="heroGetStartedBtn">Get Started with {{ code | capitalize }}</a>

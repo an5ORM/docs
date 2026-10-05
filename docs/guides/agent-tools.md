@@ -160,7 +160,7 @@ await agent.executeTool('database', {
 ## generateClientCode
 
 Generate type-safe client code from schema, for any language the ORM supports:
-`typescript`, `python`, `dotnet`, `golang` or `rust`.
+`typescript`, `python`, `dotnet`, `golang`, `rust`, `java`, `kotlin` or `swift`.
 
 ```typescript
 await agent.executeTool('generateClientCode', {

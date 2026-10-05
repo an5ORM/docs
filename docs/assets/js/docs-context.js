@@ -110,7 +110,7 @@
 
     try {
       var path = window.location.pathname;
-      var routeMatch = path.match(/\/(typescript|python|dotnet|golang|rust)\/(postgresql|sqlserver|mysql|sqlite|googlesheets|nbase)\/?/);
+      var routeMatch = path.match(/\/(typescript|python|dotnet|golang|rust|java|kotlin|swift)\/(postgresql|sqlserver|mysql|sqlite|googlesheets|nbase)\/?/);
       if (routeMatch) {
         headerCode.value = routeMatch[1];
         headerProvider.value = routeMatch[2];
