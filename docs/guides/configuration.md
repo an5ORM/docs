@@ -171,6 +171,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 {% endcase %}
 
+## SQLite Vector Search
+
+SQLite ranks a `VECTOR(n)` column inside the database. Two adapter options
+control how:
+
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlite:///app.db',
+  // Load the sqlite-vec extension. Optional: without it the adapters rank with
+  // their own distance functions or `json_each`.
+  sqliteVec: './node_modules/sqlite-vec/vec0',
+  // Pin one strategy instead of probing: 'sqlite-vec' | 'udf' | 'sql' | 'memory'.
+  vectorStrategy: 'auto',
+});
+```
+
+| Option | Type | Default | Applies to |
+|--------|------|---------|------------|
+| `sqliteVec` | `string` | unset | SQLite only |
+| `vectorStrategy` | `'auto' \| 'sqlite-vec' \| 'udf' \| 'sql' \| 'memory'` | `'auto'` | SQLite only |
+
+Other runtimes spell the same option `sqlite_vec` / `vector_strategy` (Python),
+`SqliteVec` / `VectorStrategy` (.NET), `VectorSupport` (Go), `vector_strategy`
+(Rust), `sqliteVecPath` / `vectorStrategy` (Swift) and `An5.vectorStrategy(…)`
+(Kotlin). See [Vector Search](vector-search.md#sqlite).
+
 ## LLM & Embedding Runtime Config
 
 At runtime you can read and update the active LLM/Embedding config using the config API exported from `@an5/adapters`:

@@ -235,9 +235,18 @@ db.model.vectorSearch(params: VectorSearchArgs): Promise<Model[]>
 }
 ```
 
-Returns `(Model & { distance: number })[]`. Native `VECTOR_DISTANCE` is used when
-supported by the SQL Server instance; otherwise a cosine-distance fallback runs
-in memory.
+Returns `(Model & { distance: number })[]`, ordered by distance ascending.
+
+Each provider ranks in the database when it can, and scores the column in the
+client when it cannot: NBase, then `pgvector` on PostgreSQL, `VECTOR_DISTANCE`
+on SQL Server 2025, then — on SQLite — sqlite-vec, the runtime's own
+`an5_vec_*` functions, or `json_each`. A row whose stored vector cannot be
+scored is left out rather than returned with a null distance.
+
+`vectorElementType` applies to SQL Server only; SQLite stores a `VECTOR(n)`
+column as a BLOB of little-endian float32 and decodes both that and the older
+JSON text form on read. `include` is not applied to vector results: a hit is the
+whole row.
 
 ## Where Input
 

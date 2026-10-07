@@ -13,6 +13,10 @@
 <p class="guide-note">
   <strong>NBase note:</strong> NBase vector integration is documented for the TypeScript runtime. The examples below use an NBase-only adapter; no relational table is required.
 </p>
+{% elsif provider == 'sqlite' %}
+<p class="guide-note">
+  <strong>SQLite note:</strong> A <code>VECTOR(n)</code> column stores a BLOB of little-endian float32 and the search is ranked inside the database — by sqlite-vec when it loads, otherwise by the runtime's own <code>an5_vec_*</code> functions or <code>json_each</code>. No extension is required. Write and read a plain array of numbers; see <a href="{{ '/docs/vector-search/#sqlite' | relative_url }}">Vector Search</a>.
+</p>
 {% else %}
 <p class="guide-note">
   <strong>{{ provider | capitalize }} note:</strong> This provider has no native vector search in AN5. Where supported, the runtime loads matching rows and ranks their embeddings in memory. Limit table size and filter candidates early.

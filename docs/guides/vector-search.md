@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Vector Search
-description: AI-powered semantic search with NBase, SQL Server, PostgreSQL, or in-memory
+description: AI-powered semantic search with NBase, SQL Server, PostgreSQL, SQLite, or in-memory
 ---
 
 # Vector Search
@@ -26,7 +26,8 @@ The TypeScript runtime tries the backends in this order and uses the first one t
 | 1 | [NBase](https://github.com/N2FlowJS/nbase) — Neural Vector Database | An NBase endpoint |
 | 2 | PostgreSQL | pgvector extension |
 | 3 | SQL Server 2025 | `VECTOR_DISTANCE` |
-| 4 | In-memory | Nothing, but the whole table is loaded |
+| 4 | SQLite | [sqlite-vec](https://github.com/asg017/sqlite-vec), or nothing |
+| 5 | In-memory | Nothing, but the whole table is loaded |
 
 Use NBase when the embedding table is too large to scan: the vectors live in the
 vector database and the rows stay in your table, so a search never loads the
@@ -46,19 +47,29 @@ The following sections cover all TypeScript backends, including optional NBase i
 ### 1. Enable Vector Search
 
 For the in-database backends, native support requires **SQL Server 2025** for
-`VECTOR_DISTANCE`, or the `pgvector` extension on PostgreSQL. On earlier
-instances the ORM automatically falls back to an in-memory cosine-distance
-search.
+`VECTOR_DISTANCE`, the `pgvector` extension on PostgreSQL, or the `sqlite-vec`
+extension on SQLite. On earlier instances the ORM automatically falls back to
+an in-memory cosine-distance search.
+
+SQLite needs no extension at all: the adapters register their own
+`an5_vec_cosine` / `an5_vec_l2` / `an5_vec_ip` functions where the driver allows
+it, and rank the column with `json_each` where it does not. See
+[SQLite](#sqlite) below.
 
 ### 2. Create Vector Fields
+
+Declare the column as `VECTOR(n)` and the runtime stores what the provider
+needs: the native `VECTOR` type on SQL Server and PostgreSQL, a BLOB of float32
+on SQLite. SQLite has no vector type, so the schema's declaration only names the
+column — what ends up in it is the runtime's choice.
 
 ```an5
 model Document {
   id        NVARCHAR(1000)  @id @default(uuid())
   title     NVARCHAR(255)
   content   TEXT
-  embedding VARBINARY(8000) @description("Vector embedding for semantic search")
-  
+  embedding VECTOR(1536)    @description("Vector embedding for semantic search")
+
   @@map("documents")
 }
 ```
@@ -77,7 +88,7 @@ await db.document.create({
   data: {
     title: document.title,
     content: document.content,
-    embedding: Buffer.from(new Float32Array(embedding).buffer)
+    embedding
   }
 });
 ```
@@ -233,6 +244,102 @@ const results = await db.document.vectorSearch({
 ```
 
 Results are always returned ordered by `distance` ascending (closest first).
+
+## SQLite
+
+SQLite has no vector type, so a `VECTOR(n)` column stores a **BLOB of
+little-endian float32** — 4 bytes per dimension, about a third of the JSON text
+it replaces. Write a plain array of numbers and the adapters encode it for you;
+read it back and you get the same array, so nothing in your code deals with
+bytes.
+
+```typescript
+await db.document.create({
+  data: { title: 'RAG overview', content: '...', embedding: queryEmbedding }
+});
+
+const row = await db.document.findFirst({ where: { title: 'RAG overview' } });
+row.embedding; // number[] — the float32 bytes were decoded
+```
+
+A column that already holds JSON text (`'[0.1, 0.2]'`) keeps working: the
+adapters read both, so a database written by an older version needs no
+migration.
+
+### How the search is ranked
+
+Every runtime tries the same four strategies in order, and uses the first one
+that runs:
+
+| Order | Strategy | Needs | Reaches |
+|-------|----------|-------|---------|
+| 1 | `sqlite-vec` | The extension loaded | `BLOB` columns, and `vec0` tables |
+| 2 | `udf` | A driver that can register a function | `BLOB` and legacy text columns |
+| 3 | `sql` | JSON1 (built in since SQLite 3.38) | Legacy text columns |
+| 4 | `memory` | Nothing | Any column, whole table loaded |
+
+Strategies 1-3 rank inside the database and transfer only the rows that match,
+which is the reason to prefer them over the in-memory path. A row whose stored
+vector cannot be scored — no vector, another dimension — is left out rather than
+reported with a null distance.
+
+Which strategies a given runtime can reach:
+
+| Runtime | `sqlite-vec` | `udf` | `sql` | `memory` |
+|---------|--------------|-------|-------|----------|
+| TypeScript (`better-sqlite3`) | yes | yes | yes | yes |
+| TypeScript (browser `sql.js`) | only in a WASM build that can load one | with `registerFunction` | yes | yes |
+| Python (`sqlite3`) | yes | yes | yes | yes |
+| .NET (`Microsoft.Data.Sqlite`) | yes | yes | yes | yes |
+| Go (`database/sql`) | if the driver loaded it | if the driver registered them | yes | yes |
+| Rust (`sqlx`) | no | no | yes | yes |
+| Java / Kotlin (JDBC) | if the driver loaded it | no | yes | yes |
+| Swift (`CSQLite`) | yes | yes | yes | yes |
+
+`sqlx` pools connections and JDBC has no API for either, which is why those two
+reach only the `sql` and `memory` strategies. That still ranks in the database —
+the table is not loaded into the client — it just cannot use an ANN index.
+
+### Loading sqlite-vec
+
+[sqlite-vec](https://github.com/asg017/sqlite-vec) adds an approximate nearest
+neighbour index, which is what makes a large embedding table fast. Pass the
+extension binary when you open the adapter:
+
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlite:///app.db',
+  sqliteVec: './node_modules/sqlite-vec/vec0',
+});
+```
+
+```python
+db = create_an5_adapter("sqlite:///app.db", sqlite_vec="vec0")
+```
+
+```swift
+SQLiteDriver.sqliteVecPath = "path/to/vec0"
+```
+
+For a real ANN index, store the vectors in a
+[`vec0` virtual table](https://github.com/asg017/sqlite-vec#virtual-tables)
+alongside your own, which is the shape sqlite-vec is indexed for.
+
+### Pinning a strategy
+
+`vectorStrategy` skips the probing and uses one strategy, which is useful for
+pinning a benchmark or for reproducing a query exactly:
+
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlite:///app.db',
+  vectorStrategy: 'memory', // or 'sqlite-vec' | 'udf' | 'sql'
+});
+```
+
+The other runtimes take the same option (`vector_strategy` in Python,
+`VectorStrategy` in .NET, `VectorSupport` in Go, `An5.vectorStrategy(...)` in
+Kotlin, `An5Adapter.vectorStrategy` in Swift, `vector_strategy` in Rust).
 
 ## In-Memory Fallback
 

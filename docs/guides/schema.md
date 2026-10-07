@@ -232,7 +232,7 @@ to. A model that declares `@@schema("main")` keeps that prefix everywhere.
 | `BLOB` | Binary data | `BLOB` | `Buffer` |
 | `UUID` | UUID string | `UUID` | `string` |
 | `JSON` | JSON string | `JSON` | `any` |
-| `VECTOR` | In-memory vector embedding | `VECTOR(1536)` | `number[] \| string` |
+| `VECTOR` | Vector embedding, stored as float32 BLOB | `VECTOR(1536)` | `number[] \| string` |
 
   </div>
 

@@ -25,7 +25,7 @@ AN5 ORM supports 6 database and storage providers across relational, vector, and
 | **PostgreSQL** | `postgres://`, `postgresql://` | Postgres SQL | `LIMIT / OFFSET` | `%s`, `$1` | Native via `pgvector` | `db:push` |
 | **SQL Server** | `sqlserver://` | T-SQL | `OFFSET ... FETCH` | `@p_0`, `?` | Native (2025) / In-memory | `db:push`, `db:pull`, `db:migrate` |
 | **MySQL** | `mysql://`, `mariadb://` | MySQL / MariaDB | `LIMIT / OFFSET` | `?` | In-memory fallback | `db:push` |
-| **SQLite** | `sqlite://`, `.db`, `.sqlite` | SQLite3 | `LIMIT / OFFSET` | `?` | In-memory fallback | `db:push` |
+| **SQLite** | `sqlite://`, `.db`, `.sqlite` | SQLite3 | `LIMIT / OFFSET` | `?` | Native (sqlite-vec / built-in distance functions / `json_each`) | `db:push` |
 | **Google Sheets** | `googlesheets://` | In-memory query | Array slicing | N/A | Not supported | Serverless sync |
 | **NBase** | `nbase://` | Vector Engine | Vector `topK` | N/A | Native Vector Store | Vector indexing |
 
@@ -98,6 +98,7 @@ DATABASE_URL=./dev.db
 * **Zero Configuration**: No standalone database server required; operates directly on local disk or `:memory:`.
 * **Pagination**: Uses `LIMIT {take} OFFSET {skip}`.
 * **Parameters**: Positional `?` placeholders.
+* **Vector Search**: A `VECTOR(n)` column stores a BLOB of little-endian float32, and the search is ranked inside the database — by [sqlite-vec](https://github.com/asg017/sqlite-vec) when it loads, otherwise by the runtime's own `an5_vec_*` functions or `json_each`. No extension is required. See [Vector Search](vector-search.md#sqlite) for which strategy each runtime reaches.
 * **Ideal for**: Rapid local development, integration tests, and edge/desktop applications.
 
 ---
