@@ -21,8 +21,8 @@ This page summarizes what is currently implemented, published, and still maturin
 | `an5-adapters` | PyPI | `0.2.5` | Build-ready | Wheel/sdist pass `twine check`; PyPI token / trusted publisher setup |
 | `an5-orm` | PyPI | `1.1.1` | Build-ready | Wheel/sdist pass `twine check`; PyPI token / trusted publisher setup |
 | `an5-adapters` | crates.io | `0.1.0` | Published | Rust adapter runtime; `cargo add an5-adapters`, docs on [docs.rs](https://docs.rs/an5-adapters) |
-| `an5-adapters-java` | Maven Central | `0.2.11` | Build-ready | JDBC runtime; sources, javadoc and signatures build under `-Prelease`, and the `publish-maven` job uploads them |
-| `an5-adapters-kotlin` | Maven Central | `0.2.11` | Build-ready | Kotlin runtime over the Java adapter; `maven-publish` with in-memory signing, same job |
+| `an5-adapters-java` | Maven Central | `0.2.12` | Published | JDBC runtime under `io.github.an5orm`; `0.2.11` shipped first, `0.2.12` adds the Kotlin runtime beside it |
+| `an5-adapters-kotlin` | Maven Central | `0.2.12` | Build-ready | Kotlin runtime over the Java adapter; `maven-publish` with in-memory signing, same job |
 
 PyPI does not use npm-style scopes like `@an5/orm`. The Python package names are `an5-adapters` and `an5-orm`. crates.io shares the `an5-adapters` name with PyPI, which is intended: they are the adapter runtime for different language toolchains. Maven needs no account to build: `mvn -f an5Adapters/java/pom.xml install` puts the Java runtime in `~/.m2`, where `build.gradle.kts` resolves it through `mavenLocal()`; only the upload needs the Central Portal token and GPG secrets.
 
