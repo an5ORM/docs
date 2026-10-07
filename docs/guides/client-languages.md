@@ -243,7 +243,7 @@ Maven and Gradle can resolve it as a module instead. The runtime itself has no d
 at all — which is what lets one adapter serve all three engines, and what keeps it usable on
 Android.
 
-Releases publish it to Maven Central as `org.an5orm:an5-adapters-java`; until the first one
+Releases publish it to Maven Central as `io.github.an5orm:an5-adapters-java`; until the first one
 lands, install it from a checkout (`mvn -f an5Adapters/java/pom.xml install`), which is what
 the Kotlin module's `mavenLocal()` also resolves.
 
@@ -303,7 +303,7 @@ npm install @an5/adapters @an5/orm
 `an5Adapters/kotlin` ships a `build.gradle.kts` and depends on the Java runtime rather than
 reimplementing it, so the dialect rules and the where builder exist once — a filter that
 means one thing in Java cannot mean another in Kotlin. Releases publish it to Maven Central
-as `org.an5orm:an5-adapters-kotlin`; from a checkout, `mvn -f an5Adapters/java/pom.xml
+as `io.github.an5orm:an5-adapters-kotlin`; from a checkout, `mvn -f an5Adapters/java/pom.xml
 install` puts the Java runtime in `~/.m2` where `mavenLocal()` finds it, then
 `gradle -p an5Adapters/kotlin build` runs the whole module, smoke included.
 
