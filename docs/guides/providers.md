@@ -98,7 +98,7 @@ DATABASE_URL=./dev.db
 * **Zero Configuration**: No standalone database server required; operates directly on local disk or `:memory:`.
 * **Pagination**: Uses `LIMIT {take} OFFSET {skip}`.
 * **Parameters**: Positional `?` placeholders.
-* **Vector Search**: A `VECTOR(n)` column stores a BLOB of little-endian float32, and the search is ranked inside the database — by [sqlite-vec](https://github.com/asg017/sqlite-vec) when it loads, otherwise by the runtime's own `an5_vec_*` functions or `json_each`. No extension is required. See [Vector Search](vector-search.md#sqlite) for which strategy each runtime reaches.
+* **Vector Search**: A `VECTOR(n)` column stores a BLOB of little-endian float32, and the search is ranked inside the database — by [sqlite-vec](https://github.com/asg017/sqlite-vec) when it loads, otherwise by the runtime's own `an5_vec_*` functions or `json_each`. No extension is required. See [Vector Search]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/vector-search/' | relative_url }}#sqlite) for which strategy each runtime reaches.
 * **Ideal for**: Rapid local development, integration tests, and edge/desktop applications.
 
 ---

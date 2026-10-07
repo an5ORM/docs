@@ -195,7 +195,7 @@ const db = createAn5Adapter({
 Other runtimes spell the same option `sqlite_vec` / `vector_strategy` (Python),
 `SqliteVec` / `VectorStrategy` (.NET), `VectorSupport` (Go), `vector_strategy`
 (Rust), `sqliteVecPath` / `vectorStrategy` (Swift) and `An5.vectorStrategy(…)`
-(Kotlin). See [Vector Search](vector-search.md#sqlite).
+(Kotlin). See [Vector Search]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/vector-search/' | relative_url }}#sqlite).
 
 ## LLM & Embedding Runtime Config
 
