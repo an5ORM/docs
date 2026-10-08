@@ -42,7 +42,7 @@ an5example/
     ├── golang/               # Generated Go client CRUD against SQLite
     ├── rust/                 # Generated Rust client CRUD against SQLite
     ├── dotnet/               # Generated C# client against SQL Server
-    ├── python/crud.py        # Generated Python client (postgres/mssql)
+    ├── python/crud.py        # Generated Python client: SQLite CRUD + VECTOR(n), live server smoke
     ├── java/                 # Maven build of the generated Java client + JDBC adapter
     ├── kotlin/               # Generated Kotlin client + adapter against SQLite
     └── swift/                # SwiftPM package: generated Swift client + SQLite driver
@@ -66,7 +66,7 @@ npm test
 | `test:go` | `go build` + `go vet` of the generated Go client |
 | `test:dotnet` | `dotnet build` of the generated C# client |
 | `test:example:dotnet` | .NET example run (skips gracefully when SQL Server is unreachable) |
-| `test:python` | Python example import/syntax check |
+| `test:python` | Python example: import check, then a SQLite CRUD + `VECTOR(n)` round trip and ranking |
 | `test:rust` | `cargo build` of the generated Rust client + run the Rust SQLite CRUD example |
 | `test:java` | `mvn compile` of the generated Java client + JDBC adapter, then the Java example |
 | `test:kotlin` | `kotlinc` build of the generated Kotlin client + adapter, then the Kotlin example |
@@ -108,9 +108,10 @@ Each `examples/` language mirrors the generated client for that language:
   `IntFilter` / `BoolFilter`, nested `AND`/`OR` composition, `orderBy` + `take`,
   relation filtering, `count`, `update`, `delete` and the vector helpers. First
   run downloads crates.
-- **Python** (`examples/python/crud.py`) — generated Python client; runs a live CRUD
-  smoke when `AN5_DATABASE_URL` points at a postgres/mssql database, otherwise an
-  import check.
+- **Python** (`examples/python/crud.py`) — generated Python client; builds a temporary
+  SQLite database and asserts a `VECTOR(n)` column comes back as floats, is stored as a
+  float32 BLOB and ranks correctly, then runs a live CRUD smoke when `AN5_DATABASE_URL`
+  points at a postgres/mssql database.
 - **Java** (`examples/java/`) — Maven project that compiles the generated Java client
   together with the JDBC adapter source and runs the CRUD example against SQLite.
   First run downloads the SQLite driver and Maven plugins.
