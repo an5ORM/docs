@@ -181,7 +181,7 @@ const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
   // Load the sqlite-vec extension. Optional: without it the adapters rank with
   // their own distance functions or `json_each`.
-  sqliteVec: './node_modules/sqlite-vec/vec0',
+  sqliteVec: require('sqlite-vec').getLoadablePath(),
   // Pin one strategy instead of probing: 'sqlite-vec' | 'udf' | 'sql' | 'memory'.
   vectorStrategy: 'auto',
 });

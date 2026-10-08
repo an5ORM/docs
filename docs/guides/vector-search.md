@@ -63,6 +63,24 @@ needs: the native `VECTOR` type on SQL Server and PostgreSQL, a BLOB of float32
 on SQLite. SQLite has no vector type, so the schema's declaration only names the
 column — what ends up in it is the runtime's choice.
 
+SQL Server is worth spelling out, because its `VECTOR` type only arrived in
+2025. A 2022 instance rejects `VECTOR(3)` outright, so on one you declare the
+column as JSON text instead:
+
+```sql
+-- SQL Server 2022 and earlier. Still ranked natively on 2025, because the
+-- adapters cast the column before measuring it:
+--   VECTOR_DISTANCE('cosine', CAST(col AS VECTOR(n, float32)), ...)
+CREATE TABLE documents (id NVARCHAR(100) PRIMARY KEY, embedding NVARCHAR(MAX) NULL);
+```
+
+On a 2025 instance both spellings return the same distances, so a column created
+before the upgrade keeps working. Only 2022 lacks the distance functions at all,
+and there the search falls back to scoring rows in memory.
+
+A vector is written and read as `float[]`, and the client converts it in both
+directions: to the JSON array SQL Server expects over TDS, and back out of it.
+
 ```an5
 model Document {
   id        NVARCHAR(1000)  @id @default(uuid())
@@ -83,7 +101,8 @@ configured through the `EmbeddingConfig` model:
 // Generate embedding with your provider, e.g. OpenAI text-embedding-3-small
 const embedding: number[] = await myEmbeddingProvider.embed(document.content);
 
-// Store with the document
+// Store with the document. The runtime encodes a number[] into the column's
+// storage form, so pass the array rather than formatting it yourself.
 await db.document.create({
   data: {
     title: document.title,
@@ -92,6 +111,11 @@ await db.document.create({
   }
 });
 ```
+
+A vector that arrives as a string is taken as already stored, which is what keeps
+a column written before the runtime encoded one readable. So an older snippet
+that passes `JSON.stringify(embedding)` still works; it just stores JSON text
+where the array would store compact bytes.
 
 ## Basic Vector Search
 
@@ -273,7 +297,7 @@ that runs:
 
 | Order | Strategy | Needs | Reaches |
 |-------|----------|-------|---------|
-| 1 | `sqlite-vec` | The extension loaded | `BLOB` columns, and `vec0` tables |
+| 1 | `sqlite-vec` | The extension loaded | Scalar distance queries over ordinary tables |
 | 2 | `udf` | A driver that can register a function | `BLOB` and legacy text columns |
 | 3 | `sql` | JSON1 (built in since SQLite 3.38) | Legacy text columns |
 | 4 | `memory` | Nothing | Any column, whole table loaded |
@@ -297,19 +321,28 @@ Which strategies a given runtime can reach:
 | Swift (`CSQLite`) | yes | yes | yes | yes |
 
 `sqlx` pools connections and JDBC has no API for either, which is why those two
-reach only the `sql` and `memory` strategies. That still ranks in the database —
-the table is not loaded into the client — it just cannot use an ANN index.
+reach the `sql` and `memory` strategies without driver-specific hooks. For JSON
+text columns, SQL avoids transferring all candidate rows. Float32 BLOB columns
+use the in-memory fallback when no vector functions are available.
 
 ### Loading sqlite-vec
 
-[sqlite-vec](https://github.com/asg017/sqlite-vec) adds an approximate nearest
-neighbour index, which is what makes a large embedding table fast. Pass the
-extension binary when you open the adapter:
+For native support for all three metrics, including dot product, use the
+[AN5 C extension](https://github.com/an5ORM/an5Adapters/tree/main/native/sqlite).
+Run `npm run build:sqlite:native -w an5Adapters` from the workspace and pass
+the printed library path as `sqliteVec`. The extension reads BLOBs directly,
+uses SSE2 on x86-64 and caches the query vector per statement. It is discovered
+under the existing `udf` strategy, but computes distances in C; adapters keep
+the native functions instead of registering language callbacks over them.
+
+[sqlite-vec](https://github.com/asg017/sqlite-vec) provides native vector distance
+functions and exact nearest-neighbour search. The adapter uses scalar distance
+functions over an ordinary table. Pass the extension binary when opening it:
 
 ```typescript
 const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
-  sqliteVec: './node_modules/sqlite-vec/vec0',
+  sqliteVec: require('sqlite-vec').getLoadablePath(),
 });
 ```
 
@@ -321,9 +354,10 @@ db = create_an5_adapter("sqlite:///app.db", sqlite_vec="vec0")
 SQLiteDriver.sqliteVecPath = "path/to/vec0"
 ```
 
-For a real ANN index, store the vectors in a
-[`vec0` virtual table](https://github.com/asg017/sqlite-vec#virtual-tables)
-alongside your own, which is the shape sqlite-vec is indexed for.
+Version 0.1.9 supplies cosine and Euclidean scalar distances, but no
+inner-product scalar function. `dot` therefore uses a driver function or the
+remaining fallback strategies. `vec0` table creation, synchronization and queries
+are application-managed through raw SQL; no ANN index is created by the adapter.
 
 ### Pinning a strategy
 
