@@ -169,13 +169,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+{% when 'java' %}
+In Java applications:
+
+```java
+import an5.adapters.An5Adapter;
+import an5.client.An5Config;
+
+try (An5Adapter adapter = new An5Adapter(An5Config.connectionString())) {
+  adapter.queryRaw("SELECT 1");
+}
+```
+
+`An5Adapter` is `AutoCloseable`. The generated `An5DbContext` builds one for you —
+`new An5DbContext(connStr)` — and hands it back through `db.adapter()` when you need
+raw SQL or a table outside the schema.
+
+{% when 'kotlin' %}
+In Kotlin applications:
+
+```kotlin
+import an5.adapters.An5
+import an5.client.An5Config
+
+An5(An5Config.connectionString()).use { adapter ->
+    adapter.queryRaw("SELECT 1")
+}
+```
+
+`An5` is `AutoCloseable` and exposes `table(model)` for row-level access. The generated
+`An5Db(connStr)` wraps the same runtime and adds the typed handles (`db.user`,
+`db.order`).
+
+{% when 'swift' %}
+In Swift applications:
+
+```swift
+import An5Adapters
+
+let adapter = try An5Adapter(path: "dev.db")  // file-backed SQLite
+let rows = try adapter.query("SELECT 1")
+```
+
+The Swift runtime drives the system SQLite library, so the connection string is turned
+into a file path: `try An5Db(connectionString:)` is the generated client over the same
+adapter, and `db.an5` is that adapter itself.
 {% endcase %}
 
 ## SQLite Vector Search
 
-SQLite ranks a `VECTOR(n)` column inside the database. Two adapter options
-control how:
+SQLite ranks a `VECTOR(n)` column inside the database. Two adapter options control
+it, and the TypeScript adapter takes both at construction:
 
+{% if code == "typescript" %}
 ```typescript
 const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
@@ -186,6 +232,7 @@ const db = createAn5Adapter({
   vectorStrategy: 'auto',
 });
 ```
+{% endif %}
 
 | Option | Type | Default | Applies to |
 |--------|------|---------|------------|
@@ -194,13 +241,16 @@ const db = createAn5Adapter({
 
 Other runtimes spell the same option `sqlite_vec` / `vector_strategy` (Python),
 `SqliteVec` / `VectorStrategy` (.NET), `VectorSupport` (Go), `vector_strategy`
-(Rust), `sqliteVecPath` / `vectorStrategy` (Swift) and `An5.vectorStrategy(…)`
-(Kotlin). See [Vector Search]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/vector-search/' | relative_url }}#sqlite).
+(Rust), `sqliteVecPath` / `vectorStrategy` (Swift), `An5.vectorStrategy(…)`
+(Kotlin) and `setVectorStrategy(…)` (Java). See [Vector Search]({{ '/' | append: code | append: '/' | append: provider | append: '/guides/vector-search/' | relative_url }}#sqlite).
 
 ## LLM & Embedding Runtime Config
 
-At runtime you can read and update the active LLM/Embedding config using the config API exported from `@an5/adapters`:
+This API belongs to the TypeScript runtime: `getLlmConfig`, `setLlmConfig`,
+`getEmbeddingConfig`, `setEmbeddingConfig` and `resetAdapter` are exported from
+`@an5/adapters`, and no other runtime exposes them.
 
+{% if code == "typescript" %}
 ```typescript
 import {
   getLlmConfig,
@@ -219,6 +269,7 @@ setEmbeddingConfig({
 });
 resetAdapter();
 ```
+{% endif %}
 
 ## Next Steps
 

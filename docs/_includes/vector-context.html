@@ -73,6 +73,26 @@ results, err := table.VectorSearch(ctx, &amp;an5adapters.VectorSearchArgs{
 if err != nil {
     return err
 }</code></pre>
+{% when 'java' %}
+<pre><code class="language-java">List&lt;Map&lt;String, Object&gt;&gt; results = table.vectorSearch(
+    queryEmbedding, 10, null, "embedding", "cosine"
+);</code></pre>
+{% when 'kotlin' %}
+<pre><code class="language-kotlin">import an5.adapters.DistanceMetric
+
+val results = table.vectorSearch(
+    vector = queryEmbedding,
+    take = 10,
+    vectorField = "embedding",
+    metric = DistanceMetric.COSINE,
+)</code></pre>
+{% when 'swift' %}
+<pre><code class="language-swift">let results = try table.vectorSearch(
+    queryEmbedding,
+    take: 10,
+    vectorField: "embedding",
+    metric: .cosine
+)</code></pre>
 {% when 'rust' %}
 <pre><code class="language-rust">use an5_adapters::VectorSearchArgs;
 

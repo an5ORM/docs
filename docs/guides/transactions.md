@@ -252,6 +252,102 @@ async fn execute_atomic_flow(adapter: &An5Adapter) -> Result<()> {
 }
 ```
 
+{% when 'java' %}
+## Basic Transaction (Scoped)
+
+`An5DbContext.transaction` commits when the callback returns and rolls back when it
+throws:
+
+```java
+User user = db.transaction(tx -> {
+  User created = db.getUser().create(
+      new User().withEmail("john@example.com").withName("John"));
+  db.getOrder().create(
+      new Order().withUserId(created.getId()).withTotal(100));
+  return created;
+});
+```
+
+The work runs on the context's adapter, so the typed handles take part in the same
+transaction; `tx` is that adapter again when you need raw SQL. Nested `transaction()`
+calls are rejected rather than flattened, because an inner commit would turn an outer
+rollback into a partial save.
+
+## Error Handling and Rollback
+
+```java
+try {
+  db.transaction(tx -> {
+    db.getUser().create(new User().withEmail("john@example.com").withName("First"));
+    throw new IllegalStateException("rollback");
+  });
+} catch (IllegalStateException expected) {
+  // the insert above was discarded with the transaction
+} catch (SQLException error) {
+  // connection-level failure
+}
+```
+
+{% when 'kotlin' %}
+## Basic Transaction (Scoped)
+
+```kotlin
+val user = db.transaction {
+    val created = db.user.create(User(email = "john@example.com", name = "John"))
+    db.order.create(Order(userId = created.id, total = 100))
+    created
+}
+```
+
+The block returns the transaction's value and commits when it returns. It is handed the
+`An5` runtime for raw SQL, but the typed handles on `db` share the same connection, so
+they are part of the transaction too. Nested `transaction` calls are rejected rather
+than flattened.
+
+## Error Handling and Rollback
+
+```kotlin
+try {
+    db.transaction<Unit> {
+        db.user.create(User(email = "john@example.com", name = "First"))
+        throw IllegalStateException("rollback")
+    }
+} catch (expected: IllegalStateException) {
+    // the insert above was discarded with the transaction
+}
+```
+
+{% when 'swift' %}
+## Basic Transaction (Scoped)
+
+```swift
+let user = try db.transaction {
+    let created = try db.user.create(User(email: "john@example.com", name: "John"))
+    try db.order.create(Order(userId: created.id, total: 100))
+    return created
+}
+```
+
+The closure returns the transaction's value and commits when it returns; a thrown error
+rolls it back first. It is handed the adapter for raw SQL, but the typed handles on `db`
+share the same connection, so they are part of the transaction too. Nested `transaction`
+calls are rejected rather than flattened.
+
+## Error Handling and Rollback
+
+```swift
+import Foundation
+
+do {
+    try db.transaction { (_: An5Adapter) throws -> Void in
+        _ = try db.user.create(User(email: "john@example.com", name: "First"))
+        throw NSError(domain: "example.rollback", code: 1)
+    }
+} catch {
+    // the insert above was discarded with the transaction
+}
+```
+
 {% endcase %}
 
 ## Best Practices

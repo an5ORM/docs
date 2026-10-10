@@ -470,6 +470,148 @@ Two things to know about the Rust client:
   `json!({ "email": { "in": ["a@b.test", "c@d.test"] } })`.
 
 {% endif %}
+
+{% if code == "java" %}
+
+### Java
+
+```java
+import an5.adapters.An5Aggregate;
+import an5.adapters.An5GroupBy;
+import an5.adapters.An5Query;
+import an5.client.An5DbContext;
+import an5.client.An5OrmTypes.StringFilter;
+import an5.client.An5OrmTypes.UserWhere;
+import an5.client.User;
+
+import java.util.List;
+import java.util.Map;
+
+try (An5DbContext db = new An5DbContext(System.getenv("DATABASE_URL"))) {
+  UserWhere where = new UserWhere();
+  where.Email = StringFilter.has("@example.com");
+
+  List<User> users = db.getUser().findMany(new An5Query()
+      .where(where.toMap())
+      .orderBy("createdAt", "desc")
+      .skip(0)
+      .take(10)
+      .select("id", "email", "createdAt"));
+}
+```
+
+Every model shares one `An5Query`: `where` takes the map `UserWhere.toMap()` produces,
+and `orderBy`, `skip`, `take`, `select` and `include` chain onto it. Calls are
+synchronous and throw `SQLException`.
+
+Aggregates and grouping live on the same client:
+
+```java
+Map<String, Object> stats = db.getOrder().aggregate(
+    new An5Aggregate().count().sum("total").avg("total"));
+
+List<Map<String, Object>> byUser = db.getOrder().groupBy(
+    new An5GroupBy().by("userId").sum("total").orderBy("userId", "asc").take(10));
+```
+
+`count()`, `sum()`, `avg()`, `min()` and `max()` all come back flat and as `Number`
+values: `stats.get("_count")`, `stats.get("_sum_total")`.
+
+Raw SQL goes through the context, or through `db.adapter()` for anything the typed
+clients miss:
+
+```java
+List<Map<String, Object>> rows = db.queryRaw(
+    "SELECT userId, SUM(total) AS revenue FROM orders GROUP BY userId");
+```
+
+{% endif %}
+
+{% if code == "kotlin" %}
+
+### Kotlin
+
+```kotlin
+import an5.adapters.Sort
+import an5.client.An5Config
+import an5.client.An5Db
+import an5.client.An5Orm
+
+An5Db(An5Config.connectionString()).use { db ->
+    val users = db.user.findMany {
+        where(An5Orm.UserWhere(email = An5Orm.StringFilter.has("@example.com")).build())
+        orderBy("createdAt", Sort.DESC)
+        skip(0)
+        take(10)
+        select("id", "email", "createdAt")
+    }
+
+    val stats = db.order.aggregate {
+        count()
+        sum("total")
+        avg("total")
+    }
+
+    val byUser = db.order.groupBy("userId") {
+        sum("total")
+        orderBy("userId", Sort.ASC)
+        take(10)
+    }
+
+    val rows = db.query(
+        "SELECT userId, SUM(total) AS revenue FROM orders GROUP BY userId")
+}
+```
+
+The query block is a `QueryBuilder`, so `where`, `orderBy`, `skip`, `take`, `select`
+and `include` read top to bottom. Aggregate keys are flat — `stats["_count"]`,
+`stats["_sum_total"]` — and `db.query` is the raw-SQL escape hatch.
+
+{% endif %}
+
+{% if code == "swift" %}
+
+### Swift
+
+```swift
+import An5Adapters
+import An5Client
+
+let db = try An5Db(connectionString: try An5Config.connectionString())
+
+var byEmail = An5Orm.UserWhere()
+byEmail.email = An5Orm.StringFilter.has("@example.com")
+
+let users = try db.user.findMany(Query(
+    filter: byEmail.build(),
+    orderBy: [["createdAt": "desc"]],
+    skip: 0,
+    take: 10,
+    select: ["id", "email", "createdAt"]
+))
+
+var orders = Aggregate()
+orders.count = true
+orders.sum = ["total"]
+orders.average = ["total"]
+let stats = try db.order.aggregate(orders)
+
+var revenue = Aggregate()
+revenue.by = ["userId"]
+revenue.sum = ["total"]
+revenue.orderBy = [["userId": "asc"]]
+revenue.take = 10
+let byUser = try db.order.groupBy(revenue)
+
+let rows = try db.query(
+    "SELECT userId, SUM(total) AS revenue FROM orders GROUP BY userId")
+```
+
+`Query` and `Aggregate` are plain values, so filter, sort, paging and projection are
+arguments rather than chained calls. Aggregate keys are flat — `stats["_count"]`,
+`stats["_sum_total"]` — and `db.query` is the raw-SQL escape hatch.
+
+{% endif %}
 {% endif %}
 
 ## Next Steps

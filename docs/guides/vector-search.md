@@ -19,7 +19,9 @@ Vector search allows you to find similar items based on semantic meaning rather 
 
 ## Choosing a backend
 
-The TypeScript runtime tries the backends in this order and uses the first one that works. Other runtimes have their own provider support; switch the language and provider in the header toolbar above to see code for your stack.
+The TypeScript runtime tries the backends in this order and uses the first one that works. Other runtimes have their own provider support, so switch the language and provider in the header toolbar above to see what yours reaches.
+
+SQLite is the exception: [every runtime stores and ranks a `VECTOR(n)` column the same way](#sqlite), so that section applies whatever language you picked.
 
 | Order | Backend | Needs |
 |-------|---------|-------|
@@ -269,6 +271,8 @@ const results = await db.document.vectorSearch({
 
 Results are always returned ordered by `distance` ascending (closest first).
 
+{% endif %}
+
 ## SQLite
 
 SQLite has no vector type, so a `VECTOR(n)` column stores a **BLOB of
@@ -277,6 +281,7 @@ it replaces. Write a plain array of numbers and the adapters encode it for you;
 read it back and you get the same array, so nothing in your code deals with
 bytes.
 
+{% if selected_code == "typescript" %}
 ```typescript
 await db.document.create({
   data: { title: 'RAG overview', content: '...', embedding: queryEmbedding }
@@ -285,6 +290,16 @@ await db.document.create({
 const row = await db.document.findFirst({ where: { title: 'RAG overview' } });
 row.embedding; // number[] — the float32 bytes were decoded
 ```
+{% endif %}
+
+{% if selected_code == "python" %}
+```python
+db.document.create(data={"title": "RAG overview", "content": "...", "embedding": query_embedding})
+
+row = db.document.find_first(where={"title": "RAG overview"})
+row["embedding"]  # [0.1, ...] — the float32 bytes were decoded
+```
+{% endif %}
 
 A column that already holds JSON text (`'[0.1, 0.2]'`) keeps working: the
 adapters read both, so a database written by an older version needs no
@@ -339,20 +354,26 @@ the native functions instead of registering language callbacks over them.
 functions and exact nearest-neighbour search. The adapter uses scalar distance
 functions over an ordinary table. Pass the extension binary when opening it:
 
+{% if selected_code == "typescript" %}
 ```typescript
 const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
   sqliteVec: require('sqlite-vec').getLoadablePath(),
 });
 ```
+{% endif %}
 
+{% if selected_code == "python" %}
 ```python
 db = create_an5_adapter("sqlite:///app.db", sqlite_vec="vec0")
 ```
+{% endif %}
 
+{% if selected_code == "swift" %}
 ```swift
 SQLiteDriver.sqliteVecPath = "path/to/vec0"
 ```
+{% endif %}
 
 Version 0.1.9 supplies cosine and Euclidean scalar distances, but no
 inner-product scalar function. `dot` therefore uses a driver function or the
@@ -361,19 +382,28 @@ are application-managed through raw SQL; no ANN index is created by the adapter.
 
 ### Pinning a strategy
 
-`vectorStrategy` skips the probing and uses one strategy, which is useful for
-pinning a benchmark or for reproducing a query exactly:
+Pinning skips the probing and uses one strategy, which is useful for pinning a
+benchmark or for reproducing a query exactly. The four values are the same in
+every runtime — `'sqlite-vec'`, `'udf'`, `'sql'`, `'memory'` — and only the
+spelling of the option differs: `vectorStrategy` in TypeScript, `vector_strategy`
+in Python and Rust, `VectorStrategy` in .NET, `VectorSupport` in Go,
+`An5.vectorStrategy(...)` in Kotlin, `An5Adapter.vectorStrategy` in Swift, and
+`setVectorStrategy(...)` in Java.
 
+{% if selected_code == "typescript" %}
 ```typescript
 const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
   vectorStrategy: 'memory', // or 'sqlite-vec' | 'udf' | 'sql'
 });
 ```
+{% endif %}
 
-The other runtimes take the same option (`vector_strategy` in Python,
-`VectorStrategy` in .NET, `VectorSupport` in Go, `An5.vectorStrategy(...)` in
-Kotlin, `An5Adapter.vectorStrategy` in Swift, `vector_strategy` in Rust).
+{% if selected_code == "python" %}
+```python
+db = create_an5_adapter("sqlite:///app.db", vector_strategy="memory")
+```
+{% endif %}
 
 ## In-Memory Fallback
 
@@ -384,12 +414,16 @@ class is needed — pass the same arguments and the ORM handles the fallback.
 It is correct but does not scale: every call loads the matching rows, so reach
 for NBase or a native engine once the table grows.
 
+{% if selected_code == "typescript" %}
 ```typescript
 const results = await db.document.vectorSearch({
   vector: queryEmbedding,
   take: 5
 });
 ```
+{% endif %}
+
+{% if selected_code == "typescript" %}
 
 ## Use Case: RAG Pipeline
 

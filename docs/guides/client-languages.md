@@ -93,7 +93,7 @@ user = db.user.create(
 # Find Many
 users = db.user.find_many(
     where={"email": {"contains": "@example.com"}},
-    order_by={"created_at": "desc"},
+    order_by={"createdAt": "desc"},
     skip=0,
     take=10,
 )
@@ -244,7 +244,7 @@ at all — which is what lets one adapter serve all three engines, and what keep
 Android.
 
 Releases publish it to Maven Central as `io.github.an5orm:an5-adapters-java` (live since
-`0.2.11`), so a build only needs `mavenCentral()`. To work on the runtime itself, install it
+`0.2.13`), so a build only needs `mavenCentral()`. To work on the runtime itself, install it
 from a checkout (`mvn -f an5Adapters/java/pom.xml install`), which is what the Kotlin module's
 `mavenLocal()` also resolves.
 
@@ -304,13 +304,13 @@ npm install @an5/adapters @an5/orm
 `an5Adapters/kotlin` ships a `build.gradle.kts` and depends on the Java runtime rather than
 reimplementing it, so the dialect rules and the where builder exist once — a filter that
 means one thing in Java cannot mean another in Kotlin. Releases publish it to Maven Central
-as `io.github.an5orm:an5-adapters-kotlin` (live since `0.2.11`), so a consumer resolves it
+as `io.github.an5orm:an5-adapters-kotlin` (live since `0.2.13`), so a consumer resolves it
 like any other dependency:
 
 ```kotlin
 repositories { mavenCentral() }
 dependencies {
-    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.11")
+    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.13")
 }
 ```
 
@@ -378,12 +378,17 @@ why `an5Client/swift` emits a `Package.swift` and keeps its sources under
 ```swift
 // Package.swift of the app
 dependencies: [
-    .package(url: "https://github.com/an5ORM/an5Adapters.git", from: "0.2.11"),
-    .package(path: "../an5Client/swift"),
+    // The runtime package is the `swift/` directory in the an5ORM/an5Adapters
+    // repository, and there is no tagged SwiftPM release to point a URL at
+    // yet, so it is a path dependency. Its identity is the directory's last
+    // path component — `swift` — which is also the generated client's, so put
+    // the generated client under a different directory name.
+    .package(path: "../an5Adapters/swift"),
+    .package(path: "../an5Client-swift"),
 ]
 targets: [
     .target(name: "AppData", dependencies: [
-        .product(name: "An5Client", package: "An5Client"),
+        .product(name: "An5Client", package: "an5Client-swift"),
     ])
 ]
 ```

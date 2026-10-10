@@ -25,6 +25,38 @@ try {
   const goPostgres = fs.readFileSync('_site/golang/postgresql/guides/queries/index.html', 'utf8');
   assert.match(goPostgres.replace(/<[^>]+>/g, ''), /sql.Open\("postgres"/);
   assert.ok(fs.existsSync('_site/{code}/{provider}/guides/queries/index.html'));
+
+  // Every guide renders the reader's language and nobody else's — the eight language
+  // branches of a `{% case code %}` are what keep a page from showing a runtime the
+  // reader never chose.
+  const fences = {
+    typescript: 'typescript',
+    python: 'python',
+    dotnet: 'csharp',
+    golang: 'go',
+    rust: 'rust',
+    java: 'java',
+    kotlin: 'kotlin',
+    swift: 'swift',
+  };
+  for (const guide of ['crud', 'getting-started', 'configuration', 'queries', 'relations', 'transactions']) {
+    for (const [code, fence] of Object.entries(fences)) {
+      const page = fs.readFileSync(`_site/${code}/sqlite/guides/${guide}/index.html`, 'utf8');
+      const foreign = Object.entries(fences)
+        .filter(([other]) => other !== code)
+        .map(([, otherFence]) => otherFence);
+      assert.match(
+        page,
+        new RegExp(`language-${fence}\\b`),
+        `${guide}/${code} has no ${fence} example`,
+      );
+      assert.doesNotMatch(
+        page,
+        new RegExp(`language-(?:${foreign.join('|')})\\b`),
+        `${guide}/${code} carries another language's example`,
+      );
+    }
+  }
   const chooser = fs.readFileSync('docs/assets/js/docs-context.js', 'utf8').replaceAll('window.location.assign(', 'window.captureRoute(');
   const css = fs.readFileSync('docs/assets/css/style.css', 'utf8');
   for (const guide of ['vector-search', 'queries']) {

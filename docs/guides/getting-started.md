@@ -21,6 +21,9 @@ For the current implementation and package maturity overview, see [Feature Statu
 {% when 'dotnet' %}- .NET 8.0 SDK or later
 {% when 'golang' %}- Go 1.21+
 {% when 'rust' %}- Rust 1.75+ (Cargo)
+{% when 'java' %}- JDK 8+ with Maven or Gradle
+{% when 'kotlin' %}- JDK 8+ with the Kotlin toolchain (Gradle)
+{% when 'swift' %}- Swift 5.9+ (Xcode 15+)
 {% else %}- TypeScript 5.0+ and npm / pnpm / yarn
 {% endcase %}
 - Connection to {{ provider | capitalize }} (or local embedded setup)
@@ -66,6 +69,57 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 ```
 Generate Rust client modules with `npm run generate`.
+
+{% when 'java' %}
+```xml
+<!-- pom.xml -->
+<dependency>
+  <groupId>io.github.an5orm</groupId>
+  <artifactId>an5-adapters-java</artifactId>
+  <version>0.2.13</version>
+</dependency>
+```
+Generate the typed Java client (`An5DbContext`, entities, filters) with `npm run generate`.
+
+{% when 'kotlin' %}
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.13")
+}
+```
+Generate the typed Kotlin client with `npm run generate`.
+
+{% when 'swift' %}
+```swift
+// Package.swift
+dependencies: [
+    // The runtime SwiftPM package is the `swift/` directory inside the
+    // an5ORM/an5Adapters repository. SwiftPM takes a package's identity from the
+    // last path component, so this one is identified as `swift` — and the
+    // generated client ships in a directory with that same name, which would
+    // make the two resolve to one package. Put the generated client under a
+    // different directory name (a copy or a symlink is enough):
+    //
+    //   git clone https://github.com/an5ORM/an5Adapters.git Vendor/an5-adapters
+    //   ln -s "$PWD/an5Client/swift" Vendor/an5-client
+    .package(path: "Vendor/an5-adapters/swift"),
+    .package(path: "Vendor/an5-client"),
+],
+targets: [
+    .executableTarget(
+        name: "App",
+        dependencies: [
+            .product(name: "An5Adapters", package: "swift"),
+            .product(name: "An5Client", package: "an5-client"),
+        ]),
+]
+```
+There is no tagged SwiftPM release to point a URL dependency at yet: the runtime
+lives in a subdirectory of that repository rather than at its root, and the
+repository carries no matching tag. Depend on it by path as above. Generate the
+typed Swift client with `npm run generate`; see
+[Feature Status]({{ '/guides/feature-status/' | relative_url }}) for the packaging gap.
 {% endcase %}
 
 ## Configuration
@@ -270,6 +324,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+{% when 'java' %}
+```java
+import an5.client.An5DbContext;
+import an5.client.User;
+
+public class Main {
+  public static void main(String[] args) throws Exception {
+    try (An5DbContext db = new An5DbContext(System.getenv("DATABASE_URL"))) {
+      User user = db.getUser().create(
+          new User().withEmail("john@example.com").withName("John Doe"));
+      System.out.println("Created user: " + user.getId());
+
+      System.out.println("Found " + db.getUser().findMany().size() + " users");
+    }
+  }
+}
+```
+
+{% when 'kotlin' %}
+```kotlin
+import an5.client.An5Db
+import an5.client.User
+
+fun main() {
+    An5Db(System.getenv("DATABASE_URL")).use { db ->
+        val user = db.user.create(User(email = "john@example.com", name = "John Doe"))
+        println("Created user: ${user.id}")
+
+        println("Found ${db.user.findMany().size} users")
+    }
+}
+```
+
+{% when 'swift' %}
+```swift
+import An5Client
+
+let db = try An5Db(connectionString: try An5Config.connectionString())
+
+let user = try db.user.create(User(email: "john@example.com", name: "John Doe"))
+print("Created user: \(user.id ?? "unknown")")
+
+let users = try db.user.findMany()
+print("Found \(users.count) users")
+```
 {% endcase %}
 
 ## Project Structure
@@ -282,7 +382,10 @@ an5/
 │   ├── python/
 │   ├── dotnet/
 │   ├── golang/
-│   └── rust/
+│   ├── rust/
+│   ├── java/
+│   ├── kotlin/
+│   └── swift/
 ├── an5Orm.config.js     # ORM configuration & database mapping
 └── .env                 # Environment variables & connection strings
 ```

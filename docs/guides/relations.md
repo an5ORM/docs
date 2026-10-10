@@ -36,9 +36,12 @@ model User {
 }
 
 model Post {
-  id       NVARCHAR(1000) @id @default(uuid())
-  title    NVARCHAR(255)
-  authorId NVARCHAR(1000)
+  id        NVARCHAR(1000) @id @default(uuid())
+  title     NVARCHAR(255)
+  content   TEXT
+  published BOOLEAN       @default(false)
+  authorId  NVARCHAR(1000)
+  createdAt DATETIME       @default(now())
   
   author   User @relation(fields: [authorId], references: [id])
 }
@@ -174,23 +177,35 @@ user = db.user.find_unique(
     include={
         "posts": {
             "where": {"published": True},
-            "order_by": {"created_at": "desc"},
+            "order_by": {"createdAt": "desc"},
             "take": 5
         }
     }
 )
 ```
 
+Query keys are the schema field names, used verbatim — `createdAt`, not
+`created_at`. The generated dataclasses are snake_case, but nothing rewrites a
+key before it reaches the SQL builder, so a snake_case key compiles to
+`"created_at"` and no such column exists.
+
 ### Relation Filtering
 
+The `some` / `every` / `none` shorthand is the TypeScript adapter's. The Python
+`where` parser never reads it, and a key it cannot parse lands in an empty
+`WHERE`, which matches every row instead of failing — so filter from the child
+side:
+
 ```python
-# Users who have published posts
-users = db.user.find_many(
-    where={
-        "posts": {
-            "some": {"published": True}
-        }
-    }
+# Posts whose author is a given user
+posts = db.post.find_many(
+    where={"authorId": "user-id"}
+)
+
+# Published posts, newest first
+posts = db.post.find_many(
+    where={"published": True},
+    order_by={"createdAt": "desc"}
 )
 ```
 
@@ -280,6 +295,184 @@ let posts = db.post().find_many(&PostFilter {
 
 for post in posts {
     println!("Post: {}", post.title);
+}
+```
+
+{% when 'java' %}
+### Include Relations in Java
+
+```java
+import an5.adapters.An5Query;
+import an5.client.An5OrmTypes.StringFilter;
+import an5.client.An5OrmTypes.UserWhere;
+import an5.client.Post;
+import an5.client.User;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+UserWhere byId = new UserWhere();
+byId.Id = StringFilter.is(userId);
+
+Map<String, Object> include = new LinkedHashMap<String, Object>();
+include.put("posts", true);
+
+User user = db.getUser().findUnique(
+    new An5Query().where(byId.toMap()).include(include));
+```
+
+The value under the relation name is `true` or an options map. The options are the ones
+a query takes — `where`, `orderBy`, `skip`, `take`, `select` and a nested `include`:
+
+```java
+Map<String, Object> options = new LinkedHashMap<String, Object>();
+options.put("where", Collections.singletonMap("title",
+    Collections.singletonMap("contains", "AN5")));
+options.put("orderBy", Collections.singletonMap("id", "desc"));
+options.put("take", 5);
+options.put("select", Arrays.asList("id", "title"));
+
+Map<String, Object> include = new LinkedHashMap<String, Object>();
+include.put("posts", options);
+
+User user = db.getUser().findUnique(
+    new An5Query().where(byId.toMap()).include(include));
+```
+
+### Relation Filters
+
+The `some` / `every` / `none` shorthand is the TypeScript adapter's. The JVM SQL builder
+never reads it, and a key it cannot parse lands in an empty `WHERE`, which matches every
+row instead of failing — so filter from the child side:
+
+```java
+import an5.client.An5OrmTypes.Filters;
+
+Map<String, Object> where = new LinkedHashMap<String, Object>();
+where.put("authorId", Filters.eq(userId));
+
+List<Post> posts = db.getPost().findMany(new An5Query().where(where));
+```
+
+### Nested Create & Connect
+
+One row per call, so a nested create is two calls in one transaction:
+
+```java
+Post post = db.transaction(tx -> {
+  User author = db.getUser().create(new User().withEmail("john@example.com"));
+  return db.getPost().create(
+      new Post().withTitle("Post 1").withAuthorId(author.getId()));
+});
+```
+
+{% when 'kotlin' %}
+### Include Relations in Kotlin
+
+```kotlin
+import an5.client.An5Orm
+import an5.client.Post
+import an5.client.User
+
+val user = db.user.findFirst {
+    where(An5Orm.UserWhere(id = An5Orm.StringFilter.`is`(userId)).build())
+    include(mapOf("posts" to true))
+}
+```
+
+`findFirst { ... }` takes the query block, so `include` sits next to `where`. The value
+under the relation name is `true` or a map of the same options a query takes:
+
+```kotlin
+val user = db.user.findFirst {
+    where(An5Orm.UserWhere(id = An5Orm.StringFilter.`is`(userId)).build())
+    include(mapOf(
+        "posts" to mapOf(
+            "where" to mapOf("title" to mapOf("contains" to "AN5")),
+            "orderBy" to mapOf("id" to "desc"),
+            "take" to 5,
+            "select" to listOf("id", "title"),
+        )
+    ))
+}
+```
+
+### Relation Filters
+
+The `some` / `every` / `none` shorthand is the TypeScript adapter's. The JVM SQL builder
+never reads it, and a key it cannot parse lands in an empty `WHERE`, which matches every
+row instead of failing — so filter from the child side:
+
+```kotlin
+val posts = db.post.findMany {
+    where(mapOf("authorId" to mapOf("equals" to userId)))
+}
+```
+
+### Nested Create & Connect
+
+One row per call, so a nested create is two calls in one transaction:
+
+```kotlin
+val post = db.transaction {
+    val author = db.user.create(User(email = "john@example.com"))
+    db.post.create(Post(title = "Post 1", authorId = author.id))
+}
+```
+
+{% when 'swift' %}
+### Include Relations in Swift
+
+```swift
+import An5Client
+
+var byId = An5Orm.UserWhere()
+byId.id = An5Orm.StringFilter.`is`(userId)
+
+let user = try db.user.findFirst(Query(
+    filter: byId.build(),
+    include: ["posts": true]
+))
+```
+
+`Query` carries the whole call, and the value under the relation name is `true` or a
+dictionary of the same options:
+
+```swift
+let user = try db.user.findFirst(Query(
+    filter: byId.build(),
+    include: ["posts": [
+        "where": ["title": ["contains": "AN5"]],
+        "orderBy": ["id": "desc"],
+        "take": 5,
+        "select": ["id", "title"],
+    ]]
+))
+```
+
+### Relation Filters
+
+The `some` / `every` / `none` shorthand is the TypeScript adapter's. The Swift SQL
+builder never reads it, and a key it cannot parse lands in an empty `WHERE`, which
+matches every row instead of failing — so filter from the child side:
+
+```swift
+let posts = try db.post.findMany(Query(
+    filter: ["authorId": ["equals": userId]]
+))
+```
+
+### Nested Create & Connect
+
+One row per call, so a nested create is two calls in one transaction:
+
+```swift
+let post = try db.transaction {
+    let author = try db.user.create(User(email: "john@example.com"))
+    return try db.post.create(Post(title: "Post 1", authorId: author.id))
 }
 ```
 

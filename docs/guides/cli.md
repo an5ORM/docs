@@ -206,7 +206,7 @@ Automates changelog compilation, SemVer bumps, Git tags, and commits:
 npx an5-cli release --preview
 
 # Release a single repository
-npx an5-cli release an5Adapters --push --tag v0.2.5
+npx an5-cli release an5Adapters --push --tag v0.2.13
 
 # Release all modified submodules across the workspace
 npx an5-cli ws . --push
