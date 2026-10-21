@@ -15,6 +15,7 @@
 - Check brand assets against a pinned an5Brand revision in the standalone Pages workflow.
 - Update `docs/guides/configuration.md`.
 - Update `docs/guides/vector-search.md`.
+- Document per-query `vectorStrategy` overrides on `vectorSearch` in the TypeScript SQLite vector search guide, and update the published package version tables and Maven/Gradle snippets for `@an5/adapters` `0.2.14`, `@an5/orm` `1.3.2` and `an5-client` `0.1.7`.
 
 ### Fixed
 - The published-packages table now matches the registries: npm `@an5/orm` `1.3.0`, `@an5/adapters` `0.2.13`, `@an5/agent` `0.3.0`, `an5-client` `0.1.5` and `an5-cli` `0.2.0`; Marketplace `an5-orm-vscode` `1.3.1`; PyPI `an5-adapters` `0.2.13`, `an5-orm` `1.3.0` and `an5-client` `0.1.5`; Maven Central `an5-adapters-java` and `an5-adapters-kotlin` `0.2.13`. The Python packages were still listed as "Build-ready" behind versions that have since been published, and `an5-client` was missing altogether. The "PyPI upload" gap, which said credentials were not configured, no longer applies.

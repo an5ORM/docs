@@ -310,7 +310,7 @@ like any other dependency:
 ```kotlin
 repositories { mavenCentral() }
 dependencies {
-    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.13")
+    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.14")
 }
 ```
 

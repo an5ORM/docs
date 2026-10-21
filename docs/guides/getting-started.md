@@ -76,7 +76,7 @@ Generate Rust client modules with `npm run generate`.
 <dependency>
   <groupId>io.github.an5orm</groupId>
   <artifactId>an5-adapters-java</artifactId>
-  <version>0.2.13</version>
+  <version>0.2.14</version>
 </dependency>
 ```
 Generate the typed Java client (`An5DbContext`, entities, filters) with `npm run generate`.
@@ -85,7 +85,7 @@ Generate the typed Java client (`An5DbContext`, entities, filters) with `npm run
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.13")
+    implementation("io.github.an5orm:an5-adapters-kotlin:0.2.14")
 }
 ```
 Generate the typed Kotlin client with `npm run generate`.

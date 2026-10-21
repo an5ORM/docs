@@ -396,6 +396,13 @@ const db = createAn5Adapter({
   connectionString: 'sqlite:///app.db',
   vectorStrategy: 'memory', // or 'sqlite-vec' | 'udf' | 'sql'
 });
+
+// Or override per query:
+const rows = await db.document.vectorSearch({
+  vector: queryEmbedding,
+  take: 5,
+  vectorStrategy: 'udf',
+});
 ```
 {% endif %}
 
