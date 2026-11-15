@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Database Providers
-description: Complete guide for all supported AN5 ORM database providers including PostgreSQL, SQL Server, MySQL, SQLite, Google Sheets, and NBase.
+description: Complete guide for all supported AN5 ORM database and vector providers including PostgreSQL, SQL Server, MySQL, SQLite, Google Sheets, and dedicated vector databases (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus).
 ---
 
 {% assign code = page.docs_code | default: 'typescript' %}
@@ -14,7 +14,7 @@ description: Complete guide for all supported AN5 ORM database providers includi
   The specifications, connection string formats, and type mappings below are aligned with your selection.
 </p>
 
-AN5 ORM supports 6 database and storage providers across relational, vector, and serverless data sources.
+AN5 ORM supports relational databases, Google Sheets serverless tables, and 6 dedicated vector database engines.
 
 ---
 
@@ -27,7 +27,7 @@ AN5 ORM supports 6 database and storage providers across relational, vector, and
 | **MySQL** | `mysql://`, `mariadb://` | MySQL / MariaDB | `LIMIT / OFFSET` | `?` | In-memory fallback | `db:push` |
 | **SQLite** | `sqlite://`, `.db`, `.sqlite` | SQLite3 | `LIMIT / OFFSET` | `?` | Native (sqlite-vec / built-in distance functions / `json_each`) | `db:push` |
 | **Google Sheets** | `googlesheets://` | In-memory query | Array slicing | N/A | Not supported | Serverless sync |
-| **NBase** | `nbase://` | Vector Engine | Vector `topK` | N/A | Native Vector Store | Vector indexing |
+| **Vector DBs** (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus) | `nbase://`, `qdrant://`, `chroma://`, `pinecone://`, `weaviate://`, `milvus://` | Vector Engine | Vector `topK` | N/A | Native Vector Store / ANN | Vector indexing |
 
 ---
 
@@ -117,14 +117,35 @@ DATABASE_URL=googlesheets://spreadsheet_id?credentials=./service-account.json
 
 ---
 
-## 6. NBase Vector DB
+## 6. Dedicated Vector Databases (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus)
 
-### Connection String
+AN5 ORM supports 6 specialized vector database engines through a unified abstraction, usable either as a primary vector database or as a sidecar vector store paired with a SQL database.
+
+### Connection Strings
+
 ```ini
-DATABASE_URL=nbase://localhost:1307
+# NBase
+DATABASE_URL=nbase://localhost:1307?token=secret&method=hnsw
+
+# Qdrant
+DATABASE_URL=qdrant://localhost:6333?collection=articles&apiKey=secret
+
+# Chroma / ChromaDB
+DATABASE_URL=chroma://localhost:8000?collection=articles&tenant=default_tenant&database=default_database
+
+# Pinecone
+DATABASE_URL=pinecone://my-index-svc.region.pinecone.io?apiKey=pcsk_secret&namespace=articles
+
+# Weaviate
+DATABASE_URL=weaviate://localhost:8080?className=Article&apiKey=secret
+
+# Milvus / Zilliz Cloud
+DATABASE_URL=milvus://localhost:19530?collection=articles&token=root:Milvus&dbName=default
 ```
 
 ### Features & Capabilities
-* **Dedicated Vector Store**: Specialized storage engine for high-dimensional embeddings.
-* **Similarity Search**: Direct vector distance calculations (Cosine, Euclidean, Dot Product).
-* **Hybrid Storage**: Can be paired with relational databases to store embeddings separately from relational rows.
+* **Unified REST Clients**: Zero third-party SDK dependencies across all runtimes (TypeScript, Python, .NET, Go, Rust, Java, Kotlin, Swift).
+* **Dual Operation Modes**:
+  - **Sidecar Mode**: Configured via `vectorStore: '...'` on a relational adapter (`sqlite://`, `postgres://`, `sqlserver://`). Stores embeddings in the vector database while keeping primary entities in SQL. Sync with `indexVectors()` and search with `vectorSearch()`.
+  - **Vector-Only Mode**: Connects directly to the vector store without an underlying relational database.
+* **Automatic Fallback**: If the external vector engine experiences an outage or timeout, queries automatically degrade gracefully to relational vector engines or in-memory similarity without throwing unhandled exceptions.

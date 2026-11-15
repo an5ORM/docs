@@ -45,7 +45,7 @@ flowchart TB
 
 | Repository | Role | Key Capabilities |
 |------------|------|------------------|
-| **an5Adapters** | Runtime Execution Engine & Query Builder | Provider-based SQL (MSSQL, Postgres, MySQL, SQLite), Google Sheets, and NBase vector engine execution, Query Builder (`parseWhere`, `buildOrderBy`, `quote`), `executorFromAdapter` bridge, connection pooling, and multi-language sources (TS, Python, .NET, Go, Rust). |
+| **an5Adapters** | Runtime Execution Engine & Query Builder | Provider-based SQL (MSSQL, Postgres, MySQL, SQLite), Google Sheets, and Vector Database execution (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus), Query Builder (`parseWhere`, `buildOrderBy`, `quote`), `executorFromAdapter` bridge, connection pooling, and multi-language sources (TS, Python, .NET, Go, Rust, Java, Kotlin, Swift). |
 | **an5Orm** | Schema, Generator & Migrations | Schema parser, multi-language code generator (`generator/`), database introspection (`pull.ts`), schema drift & migrations (`migrate.ts`, `migration-core.ts`), schema push (`push.ts`), and generic seeder runner (`seed.ts`). |
 | **an5Client** | Generated Artifacts | TypeScript model interfaces + metadata, Python dataclasses + metadata, .NET entity classes, Go structs/client, Rust models/client crate, Java JavaBeans + `An5DbContext`, Kotlin data classes + `An5Db`, and Swift structs + `An5Db`. |
 | **an5Agent** | AI Agent Library | 7 schema-driven tools: schema, query, database, codegen, retrieve, task, analyzeSchema |

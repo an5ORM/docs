@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Vector Search
-description: AI-powered semantic search with NBase, SQL Server, PostgreSQL, SQLite, or in-memory
+description: AI-powered semantic search with dedicated vector databases (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus), SQL Server, PostgreSQL, SQLite, or in-memory
 ---
 
 # Vector Search
@@ -25,14 +25,14 @@ SQLite is the exception: [every runtime stores and ranks a `VECTOR(n)` column th
 
 | Order | Backend | Needs |
 |-------|---------|-------|
-| 1 | [NBase](https://github.com/N2FlowJS/nbase) — Neural Vector Database | An NBase endpoint |
-| 2 | PostgreSQL | pgvector extension |
+| 1 | Dedicated Vector Databases ([NBase](https://github.com/N2FlowJS/nbase), Qdrant, Chroma, Pinecone, Weaviate, Milvus) | Vector store endpoint configured via `vectorStore` or `connectionString` |
+| 2 | PostgreSQL | `pgvector` extension |
 | 3 | SQL Server 2025 | `VECTOR_DISTANCE` |
-| 4 | SQLite | [sqlite-vec](https://github.com/asg017/sqlite-vec), or nothing |
-| 5 | In-memory | Nothing, but the whole table is loaded |
+| 4 | SQLite | [sqlite-vec](https://github.com/asg017/sqlite-vec), built-in distance functions, or `json_each` |
+| 5 | In-memory | Nothing, but candidate rows are scored in memory |
 
-Use NBase when the embedding table is too large to scan: the vectors live in the
-vector database and the rows stay in your table, so a search never loads the
+Use a dedicated vector database when the embedding table is too large to scan: the vectors live in the
+vector database and the rows stay in your relational table, so a search never loads the
 table into memory.
 
 {% include vector-context.html %}
@@ -167,79 +167,174 @@ const results = await db.document.vectorSearch({
 });
 ```
 
-## NBase — Neural Vector Database
+## Dedicated Vector Databases
 
-[NBase](https://github.com/N2FlowJS/nbase) is a partitioned vector database with
-HNSW, LSH and KNN indexing behind a REST API. an5 can run the similarity search
-there while the rows stay in your relational table.
+AN5 ORM includes unified, zero-dependency REST integration for six specialized vector databases:
+**NBase**, **Qdrant**, **Chroma**, **Pinecone**, **Weaviate**, and **Milvus / Zilliz Cloud**.
 
-### Configure
+All vector database providers share the common `VectorStoreProvider` contract and operate in two distinct modes:
 
-NBase is configured with a connection string, like every other backend:
+1. **Sidecar Mode (Hybrid Storage)**: Keep your relational database (`connectionString: 'postgres://...'`, `'sqlserver://...'`, or `'sqlite://...'`) and point `vectorStore` to your external vector database.
+   - Run `await db.document.indexVectors({ vectorField: 'embedding' })` once (or periodically) to push embeddings to the vector store tagged with `an5Id` and `an5Model`.
+   - `db.document.vectorSearch(...)` executes ANN similarity search in the vector engine, retrieves matching vector IDs, and hydrates full typed rows from the relational table with `{ ...row, distance }`.
+2. **Vector-Only Mode**: Pass the vector database URI directly as `connectionString` (e.g. `createAn5Adapter({ connectionString: 'qdrant://localhost:6333?collection=articles' })`). No relational database is required; queries return vector search hits directly.
 
+### Automatic Fallback & Resilience
+
+If an external vector database becomes temporarily unreachable or times out, AN5 does not crash your query. The adapter logs a warning and gracefully cascades down the provider chain:
+1. Native relational vector functions (`pgvector` on PostgreSQL, `VECTOR_DISTANCE` on SQL Server 2025, or `sqlite-vec` / built-in UDF on SQLite).
+2. In-memory cosine / euclidean / dot similarity scan as the ultimate safety net.
+
+### Supported Providers & Connection Schemes
+
+| Provider | Scheme | Default Port | Key Query Options |
+|---|---|---|---|
+| **[NBase](https://github.com/N2FlowJS/nbase)** | `nbase://` | `1307` | `token`, `method` (hnsw, lsh, knn), `timeoutMs` |
+| **[Qdrant](https://qdrant.tech/)** | `qdrant://` | `6333` | `collection`, `apiKey`, `timeoutMs` |
+| **[Chroma / ChromaDB](https://www.trychroma.com/)** | `chroma://` | `8000` | `collection`, `tenant`, `database`, `token`, `timeoutMs` |
+| **[Pinecone](https://www.pinecone.io/)** | `pinecone://` | `443` (HTTPS) | `apiKey`, `namespace`, `timeoutMs` |
+| **[Weaviate](https://weaviate.io/)** | `weaviate://` | `8080` / `443` | `className` (or `collection`), `apiKey`, `tenant`, `timeoutMs` |
+| **[Milvus / Zilliz Cloud](https://milvus.io/)** | `milvus://` | `19530` / `443` | `collection`, `token` (username:password or API key), `dbName`, `timeoutMs` |
+
+### Provider Configuration Examples
+
+#### 1. NBase (`nbase://`)
 ```typescript
 const db = createAn5Adapter({
   connectionString: 'sqlserver://localhost:1433;database=mydb',
-  nbase: 'nbase://localhost:1307',
+  vectorStore: 'nbase://localhost:1307?token=secret&method=hnsw',
 });
 ```
 
-| Form | Result |
-|------|--------|
-| `nbase://localhost:1307` | `http://localhost:1307` |
-| `nbase:localhost:1307` | `http://localhost:1307` |
-| `nbase:http://localhost:1307` | `http://localhost:1307` |
-| `nbase:https://vectors.example.com` | kept as written |
+#### 2. Qdrant (`qdrant://`)
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlite:///app.db',
+  vectorStore: 'qdrant://localhost:6333?collection=documents&apiKey=qdrant-key',
+});
+```
 
-Options are read from the query string: `?token=…&timeoutMs=…&method=hnsw`.
+#### 3. Chroma (`chroma://`)
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'postgres://user:pass@localhost:5432/mydb',
+  vectorStore: 'chroma://localhost:8000?collection=documents&tenant=default_tenant&database=default_database',
+});
+```
 
-### Index then search
+#### 4. Pinecone (`pinecone://`)
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'postgres://user:pass@localhost:5432/mydb',
+  vectorStore: 'pinecone://my-index-svc.region.pinecone.io?apiKey=pcsk_secret&namespace=documents',
+});
+```
+
+#### 5. Weaviate (`weaviate://`)
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlite:///app.db',
+  vectorStore: 'weaviate://localhost:8080?className=Document&apiKey=weaviate-key',
+});
+```
+
+#### 6. Milvus / Zilliz Cloud (`milvus://`)
+```typescript
+const db = createAn5Adapter({
+  connectionString: 'sqlserver://localhost:1433;database=mydb',
+  vectorStore: 'milvus://localhost:19530?collection=documents&token=root:Milvus&dbName=default',
+});
+```
+
+### Indexing & Querying in Sidecar Mode
 
 ```typescript
-// Once: push the embedding column into NBase.
-const { indexed } = await db.document.indexVectorsInNBase({ vectorField: 'embedding' });
+// 1. Sync embeddings into the configured vector store
+const { indexed } = await db.document.indexVectors({
+  vectorField: 'embedding',
+  batchSize: 100, // optional batch size
+});
 
-// Per query: search runs in NBase, hits are read from the table.
+// 2. Perform ANN vector similarity search
 const results = await db.document.vectorSearch({
   vector: queryEmbedding,
   vectorField: 'embedding',
   take: 10,
-  distanceMetric: 'cosine',
+  distanceMetric: 'cosine', // 'cosine' | 'euclidean' | 'dot'
 });
-// [{ id: "…", title: "…", content: "…", distance: 0.85 }, ...]
+
+// Hits are fully hydrated from the relational table:
+// [{ id: "doc-1", title: "...", content: "...", distance: 0.12 }, ...]
 ```
 
-Each vector keeps its row id in metadata, so a hit is hydrated from the table by
-that id and the result keeps the same `{ ...row, distance }` shape as the other
-backends.
+### Standalone Clients & Dynamic Factory
 
-### Vector store only
-
-An adapter whose connection string is NBase has no relational database, so a
-search returns the hits themselves:
+Each vector engine can also be used standalone without a relational adapter:
 
 ```typescript
-const db = createAn5Adapter({ connectionString: 'nbase://localhost:1307' });
-await db.$connect();          // probes the endpoint
-const hits = await db.table('Document').vectorSearch({ vector: queryEmbedding, take: 5 });
-// hits[0] = { id: "Document:42", an5Id: "42", an5Model: "Document", distance: 0.11 }
+import {
+  createVectorStore,
+  createQdrantClient,
+  createChromaClient,
+  createPineconeClient,
+  createWeaviateClient,
+  createMilvusClient,
+  createNBaseVectorClient
+} from '@an5/adapters/vector';
+
+// Auto-detect provider from URL:
+const store = createVectorStore(process.env.VECTOR_URL!);
+await store.health();
+
+// Direct upsert and query:
+await store.upsert([
+  { id: 'doc-1', vector: [0.1, 0.2, 0.3], metadata: { title: 'Intro' } }
+]);
+const searchHits = await store.search([0.1, 0.2, 0.3], { k: 5, distanceMetric: 'cosine' });
 ```
 
-### Standalone client
+### Multi-Language Runtimes
 
-```typescript
-import { createNBaseVectorClient } from '@an5/adapters/nbase';
+The vector database provider suite is natively supported across all AN5 language runtimes without requiring external heavy SDK dependencies:
 
-const nbase = createNBaseVectorClient({ url: 'http://localhost:1307' });
-await nbase.health();
-await nbase.addVectors([{ id: 'a:1', vector: [0.1, 0.2], metadata: { an5Id: '1' } }]);
-const { results } = await nbase.search([0.1, 0.2], { k: 5, distanceMetric: 'cosine' });
-```
-
-### When NBase is unavailable
-
-A NBase outage logs a warning and falls through to the next backend, so losing
-the vector store degrades performance rather than breaking queries.
+- **Python**:
+  ```python
+  from an5_adapters import create_an5_adapter
+  db = create_an5_adapter(
+      "sqlite:///app.db",
+      vector_store="qdrant://localhost:6333?collection=documents"
+  )
+  db.document.index_vectors(vector_field="embedding")
+  hits = db.document.vector_search(vector=query_embedding, take=5)
+  ```
+- **Go**:
+  ```go
+  import "an5adapters/vector"
+  store, err := vector.CreateVectorStore("pinecone://index.region.pinecone.io?apiKey=...")
+  hits, err := store.Search(ctx, queryEmbedding, 5, "cosine")
+  ```
+- **Rust**:
+  ```rust
+  use an5_adapters::vector::HttpVectorClient;
+  let client = HttpVectorClient::from_url("chroma://localhost:8000?collection=docs")?;
+  let hits = client.search(&query_embedding, 5, "cosine")?;
+  ```
+- **Java / Kotlin**:
+  ```java
+  import an5.adapters.vector.VectorStoreProvider;
+  VectorStoreProvider store = VectorStoreProvider.fromUrl("milvus://localhost:19530?collection=docs");
+  boolean ok = store.health();
+  ```
+- **.NET (C#)**:
+  ```csharp
+  var store = An5Adapters.Vector.VectorStoreProvider.FromUrl("weaviate://localhost:8080?className=Doc");
+  var hits = await store.SearchAsync(queryEmbedding, take: 5);
+  ```
+- **Swift**:
+  ```swift
+  let store = try VectorStoreProvider.from(url: "qdrant://localhost:6333?collection=docs")
+  let hits = try await store.search(queryEmbedding, take: 5)
+  ```
 
 
 ## Distance Metrics
@@ -462,7 +557,7 @@ return {
 ## Performance Tips
 
 1. **Index your vector columns** for faster similarity search
-   - With NBase: `indexVectorsInNBase({ vectorField: 'embedding' })` once, then
+   - With dedicated vector stores (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus): `indexVectors({ vectorField: 'embedding' })` once, then
      searches run in the vector database instead of scanning the table
 2. **Limit results** with `take` to reduce computation
 3. **Filter early** with `where` to narrow candidates

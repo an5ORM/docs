@@ -238,9 +238,9 @@ db.model.vectorSearch(params: VectorSearchArgs): Promise<Model[]>
 Returns `(Model & { distance: number })[]`, ordered by distance ascending.
 
 Each provider ranks in the database when it can, and scores the column in the
-client when it cannot: NBase, then `pgvector` on PostgreSQL, `VECTOR_DISTANCE`
-on SQL Server 2025, then — on SQLite — sqlite-vec, the runtime's own
-`an5_vec_*` functions, or `json_each`. A row whose stored vector cannot be
+client when it cannot: dedicated vector databases (NBase, Qdrant, Chroma, Pinecone, Weaviate, Milvus),
+then `pgvector` on PostgreSQL, `VECTOR_DISTANCE` on SQL Server 2025, then — on SQLite — sqlite-vec,
+the runtime's own `an5_vec_*` functions, or `json_each`. A row whose stored vector cannot be
 scored is left out rather than returned with a null distance.
 
 `vectorElementType` applies to SQL Server only; SQLite stores a `VECTOR(n)`
@@ -584,7 +584,13 @@ The package also exposes scoped entry points:
 | `@an5/adapters/dotnet` | Packaged .NET adapter facade source |
 | `@an5/adapters/golang` | Packaged Go adapter facade source |
 | `@an5/adapters/rust` | Packaged Rust adapter Cargo crate |
+| `@an5/adapters/vector` | Unified vector store factory (`createVectorStore`) and providers |
 | `@an5/adapters/nbase` | NBase dialect adapter |
+| `@an5/adapters/qdrant` | Qdrant vector client |
+| `@an5/adapters/chroma` | ChromaDB vector client |
+| `@an5/adapters/pinecone` | Pinecone vector client |
+| `@an5/adapters/weaviate` | Weaviate vector client |
+| `@an5/adapters/milvus` | Milvus / Zilliz vector client |
 
 ### Sheets config (`An5SheetsAdapterConfig`)
 
