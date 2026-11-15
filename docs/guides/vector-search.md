@@ -25,7 +25,7 @@ SQLite is the exception: [every runtime stores and ranks a `VECTOR(n)` column th
 
 | Order | Backend | Needs |
 |-------|---------|-------|
-| 1 | Dedicated Vector Databases ([NBase](https://github.com/N2FlowJS/nbase), Qdrant, Chroma, Pinecone, Weaviate, Milvus) | Vector store endpoint configured via `vectorStore` or `connectionString` |
+| 1 | Dedicated Vector Databases ([NBase](https://github.com/N2FlowJS/nbase), Qdrant, Chroma, Pinecone, Weaviate, Milvus) | Vector store endpoint configured via `connectionString` |
 | 2 | PostgreSQL | `pgvector` extension |
 | 3 | SQL Server 2025 | `VECTOR_DISTANCE` |
 | 4 | SQLite | [sqlite-vec](https://github.com/asg017/sqlite-vec), built-in distance functions, or `json_each` |
@@ -172,18 +172,7 @@ const results = await db.document.vectorSearch({
 AN5 ORM includes unified, zero-dependency REST integration for six specialized vector databases:
 **NBase**, **Qdrant**, **Chroma**, **Pinecone**, **Weaviate**, and **Milvus / Zilliz Cloud**.
 
-All vector database providers share the common `VectorStoreProvider` contract and operate in two distinct modes:
-
-1. **Sidecar Mode (Hybrid Storage)**: Keep your relational database (`connectionString: 'postgres://...'`, `'sqlserver://...'`, or `'sqlite://...'`) and point `vectorStore` to your external vector database.
-   - Run `await db.document.indexVectors({ vectorField: 'embedding' })` once (or periodically) to push embeddings to the vector store tagged with `an5Id` and `an5Model`.
-   - `db.document.vectorSearch(...)` executes ANN similarity search in the vector engine, retrieves matching vector IDs, and hydrates full typed rows from the relational table with `{ ...row, distance }`.
-2. **Vector-Only Mode**: Pass the vector database URI directly as `connectionString` (e.g. `createAn5Adapter({ connectionString: 'qdrant://localhost:6333?collection=articles' })`). No relational database is required; queries return vector search hits directly.
-
-### Automatic Fallback & Resilience
-
-If an external vector database becomes temporarily unreachable or times out, AN5 does not crash your query. The adapter logs a warning and gracefully cascades down the provider chain:
-1. Native relational vector functions (`pgvector` on PostgreSQL, `VECTOR_DISTANCE` on SQL Server 2025, or `sqlite-vec` / built-in UDF on SQLite).
-2. In-memory cosine / euclidean / dot similarity scan as the ultimate safety net.
+All vector database providers share the common `VectorStoreProvider` contract and are configured directly via `connectionString` (e.g. `createAn5Adapter({ connectionString: 'qdrant://localhost:6333?collection=articles' })`).
 
 ### Supported Providers & Connection Schemes
 
@@ -201,70 +190,57 @@ If an external vector database becomes temporarily unreachable or times out, AN5
 #### 1. NBase (`nbase://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'sqlserver://localhost:1433;database=mydb',
-  vectorStore: 'nbase://localhost:1307?token=secret&method=hnsw',
+  connectionString: 'nbase://localhost:1307?token=secret&method=hnsw',
 });
 ```
 
 #### 2. Qdrant (`qdrant://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'sqlite:///app.db',
-  vectorStore: 'qdrant://localhost:6333?collection=documents&apiKey=qdrant-key',
+  connectionString: 'qdrant://localhost:6333?collection=documents&apiKey=qdrant-key',
 });
 ```
 
 #### 3. Chroma (`chroma://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'postgres://user:pass@localhost:5432/mydb',
-  vectorStore: 'chroma://localhost:8000?collection=documents&tenant=default_tenant&database=default_database',
+  connectionString: 'chroma://localhost:8000?collection=documents&tenant=default_tenant&database=default_database',
 });
 ```
 
 #### 4. Pinecone (`pinecone://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'postgres://user:pass@localhost:5432/mydb',
-  vectorStore: 'pinecone://my-index-svc.region.pinecone.io?apiKey=pcsk_secret&namespace=documents',
+  connectionString: 'pinecone://my-index-svc.region.pinecone.io?apiKey=pcsk_secret&namespace=documents',
 });
 ```
 
 #### 5. Weaviate (`weaviate://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'sqlite:///app.db',
-  vectorStore: 'weaviate://localhost:8080?className=Document&apiKey=weaviate-key',
+  connectionString: 'weaviate://localhost:8080?className=Document&apiKey=weaviate-key',
 });
 ```
 
 #### 6. Milvus / Zilliz Cloud (`milvus://`)
 ```typescript
 const db = createAn5Adapter({
-  connectionString: 'sqlserver://localhost:1433;database=mydb',
-  vectorStore: 'milvus://localhost:19530?collection=documents&token=root:Milvus&dbName=default',
+  connectionString: 'milvus://localhost:19530?collection=documents&token=root:Milvus&dbName=default',
 });
 ```
 
-### Indexing & Querying in Sidecar Mode
+### Querying with `createAn5Adapter`
 
 ```typescript
-// 1. Sync embeddings into the configured vector store
-const { indexed } = await db.document.indexVectors({
-  vectorField: 'embedding',
-  batchSize: 100, // optional batch size
-});
+await db.$connect();
 
-// 2. Perform ANN vector similarity search
-const results = await db.document.vectorSearch({
+// Perform ANN vector similarity search
+const results = await db.table('Document').vectorSearch({
   vector: queryEmbedding,
-  vectorField: 'embedding',
   take: 10,
   distanceMetric: 'cosine', // 'cosine' | 'euclidean' | 'dot'
 });
-
-// Hits are fully hydrated from the relational table:
-// [{ id: "doc-1", title: "...", content: "...", distance: 0.12 }, ...]
+// [{ id: "Document:42", an5Id: "42", an5Model: "Document", distance: 0.12 }, ...]
 ```
 
 ### Standalone Clients & Dynamic Factory
@@ -300,12 +276,8 @@ The vector database provider suite is natively supported across all AN5 language
 - **Python**:
   ```python
   from an5_adapters import create_an5_adapter
-  db = create_an5_adapter(
-      "sqlite:///app.db",
-      vector_store="qdrant://localhost:6333?collection=documents"
-  )
-  db.document.index_vectors(vector_field="embedding")
-  hits = db.document.vector_search(vector=query_embedding, take=5)
+  db = create_an5_adapter("qdrant://localhost:6333?collection=documents")
+  hits = db.table("Document").vector_search(vector=query_embedding, take=5)
   ```
 - **Go**:
   ```go

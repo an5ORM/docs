@@ -145,7 +145,5 @@ DATABASE_URL=milvus://localhost:19530?collection=articles&token=root:Milvus&dbNa
 
 ### Features & Capabilities
 * **Unified REST Clients**: Zero third-party SDK dependencies across all runtimes (TypeScript, Python, .NET, Go, Rust, Java, Kotlin, Swift).
-* **Dual Operation Modes**:
-  - **Sidecar Mode**: Configured via `vectorStore: '...'` on a relational adapter (`sqlite://`, `postgres://`, `sqlserver://`). Stores embeddings in the vector database while keeping primary entities in SQL. Sync with `indexVectors()` and search with `vectorSearch()`.
-  - **Vector-Only Mode**: Connects directly to the vector store without an underlying relational database.
-* **Automatic Fallback**: If the external vector engine experiences an outage or timeout, queries automatically degrade gracefully to relational vector engines or in-memory similarity without throwing unhandled exceptions.
+* **Unified `connectionString` Configuration**: Pass any vector database URI directly via `connectionString` (or `DATABASE_URL`).
+* **Consistent Search API**: Query nearest neighbors directly via `vectorSearch()` with `cosine`, `euclidean`, or `dot` distance metrics.
