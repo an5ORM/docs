@@ -362,9 +362,11 @@ users = db.user.find_many(
 )
 ```
 
-Keys are the schema field names (`isActive`, `createdAt`). The Python SQL
-builder quotes a key verbatim, so the snake_case spelling the generated
-dataclasses use would compile to a column that does not exist.
+The Python adapter resolves both schema field names (`isActive`, `createdAt`)
+and `snake_case` aliases (`is_active`, `created_at`) through generated metadata,
+accepts typed filter/args dataclasses from `an5_orm_types.py` (such as
+`UserWhereInput`, `StringFilter`, `UserOrderByInput`, and `UserFindManyArgs`),
+and raises `ValueError` on unknown field or operator keys.
 
 {% when 'dotnet' %}
 ```csharp

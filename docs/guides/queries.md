@@ -292,9 +292,11 @@ Two differences from TypeScript are worth knowing:
 - **`take` is what turns pagination on.** `skip` on its own is ignored, so always
   pass `take` when paging.
 
-Filter keys go into SQL as column names and stay camelCase. The generated
-`StringFilter` dataclasses use snake_case names (`starts_with`, `not_in`) that the
-parser does not read — pass plain dicts, not those dataclasses.
+Both schema names (`createdAt`, `startsWith`, `notIn`) and `snake_case` aliases
+(`created_at`, `starts_with`, `not_in`), as well as the generated dataclasses
+from `an5_orm_types.py` (such as `UserWhereInput`, `StringFilter`, and
+`UserOrderByInput`), are accepted and normalized through generated metadata.
+Unknown field or operator keys raise `ValueError`.
 
 ```python
 rows = db.query_raw(

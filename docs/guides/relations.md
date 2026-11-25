@@ -184,28 +184,26 @@ user = db.user.find_unique(
 )
 ```
 
-Query keys are the schema field names, used verbatim — `createdAt`, not
-`created_at`. The generated dataclasses are snake_case, but nothing rewrites a
-key before it reaches the SQL builder, so a snake_case key compiles to
-`"created_at"` and no such column exists.
+Both schema field names (`createdAt`) and `snake_case` aliases (`created_at`)
+resolve through generated metadata, and unknown field or relation filter keys
+raise `ValueError`.
 
 ### Relation Filtering
 
-The `some` / `every` / `none` shorthand is the TypeScript adapter's. The Python
-`where` parser never reads it, and a key it cannot parse lands in an empty
-`WHERE`, which matches every row instead of failing — so filter from the child
-side:
+Python supports `some` / `every` / `none` for to-many relations and `is` / `isNot`
+(`is_not`) for to-one relations via correlated `EXISTS` / `NOT EXISTS`
+subqueries:
 
 ```python
-# Posts whose author is a given user
-posts = db.post.find_many(
-    where={"authorId": "user-id"}
+# Users who have at least one published post
+users = db.user.find_many(
+    where={"posts": {"some": {"published": True}}},
+    order_by={"created_at": "desc"},
 )
 
-# Published posts, newest first
+# Posts whose author matches a filter
 posts = db.post.find_many(
-    where={"published": True},
-    order_by={"createdAt": "desc"}
+    where={"author": {"is": {"email": "alice@example.com"}}},
 )
 ```
 
