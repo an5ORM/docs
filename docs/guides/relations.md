@@ -111,7 +111,7 @@ const user = await db.user.findUnique({
 
 ### Relation Filters
 
-To-many filters (`some`, `none`, `every`) and to-one filters (`is`, `isNot`) compile to `EXISTS` / `NOT EXISTS` subqueries:
+To-many filters (`some`, `none`, `every`) and to-one filters (`is`, `isNot`) compile to `EXISTS` / `NOT EXISTS` subqueries. All runtimes reject unknown scalar/relation operators, mismatched relation quantifiers (such as `is` on a to-many relation or `some` on a to-one relation), and invalid filter payloads:
 
 ```typescript
 // Find users with at least one published post
