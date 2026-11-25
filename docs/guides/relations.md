@@ -279,21 +279,44 @@ for _, post := range posts {
 {% when 'rust' %}
 ### Querying Relations in Rust
 
-In the generated Rust client:
+In the generated Rust client, `An5Client` registers `relation_map` metadata and
+`*WhereInput` structs support typed `ListRelationFilter` (`some` / `none` /
+`every`) and `RelationFilter` (`is` / `is_not`) relation filters, as well as
+foreign-key filters:
 
 ```rust
-// Find unique user
-let user = db.user().find_unique("user-id").await?;
-
-// Query related posts using foreign-key filter
-let posts = db.post().find_many(&PostFilter {
-    author_id: Some(StringFilter::Equals(user.id.clone())),
+// Users who have at least one published post
+let users = db.user().find_many(&UserFindManyArgs {
+    where_: Some(UserWhereInput {
+        posts: Some(ListRelationFilter {
+            some: Some(Box::new(PostWhereInput {
+                published: Some(BoolFilter { equals: Some(true) }),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }),
     ..Default::default()
 }).await?;
 
-for post in posts {
-    println!("Post: {}", post.title);
-}
+// Posts whose author has a given email
+let posts = db.post().find_many(&PostFindManyArgs {
+    where_: Some(PostWhereInput {
+        author: Some(RelationFilter {
+            is: Some(Some(Box::new(UserWhereInput {
+                email: Some(StringFilter {
+                    equals: Some("alice@example.com".to_string()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }))),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }),
+    ..Default::default()
+}).await?;
 ```
 
 {% when 'java' %}
