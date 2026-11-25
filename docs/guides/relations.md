@@ -226,30 +226,60 @@ user = db.user.create({
 {% when 'dotnet' %}
 ### Querying Relations in C#
 
-In the generated .NET entity client:
+In the generated .NET client, `An5ClientMetadata` registers `RelationMap` and `ModelFields`,
+and `*WhereInput` classes support typed `ListRelationFilter<T>` (`Some` / `None` / `Every`)
+and `RelationFilter<T>` (`Is` / `IsNull` / `IsNot` / `IsNotNull`) correlated subqueries as
+well as foreign-key filters:
 
 ```csharp
-// Retrieve user with included posts
-var users = db.Users.FindMany(
-    where: u => u.Email.Contains("@example.com"),
-    include: "Posts"
-);
-
-// Access child posts collection
-foreach (var user in users)
+// Users who have at least one published post
+var users = db.User.FindMany(new UserFindManyArgs
 {
-    Console.WriteLine($"{user.Name} has {user.Posts.Count} posts");
-}
+    Where = new UserWhereInput
+    {
+        Posts = new ListRelationFilter<PostWhereInput>
+        {
+            Some = new PostWhereInput
+            {
+                Published = new BoolFilter { Equals = true },
+            },
+        },
+    },
+});
+
+// Posts whose author has an example.com email (to-one relation filter)
+var authorPosts = db.Post.FindMany(new PostFindManyArgs
+{
+    Where = new PostWhereInput
+    {
+        Author = new RelationFilter<UserWhereInput>
+        {
+            Is = new UserWhereInput
+            {
+                Email = new StringFilter { EndsWith = "@example.com", Mode = "insensitive" },
+            },
+        },
+    },
+});
+
+// Fetch related child posts directly by foreign key
+var fkPosts = db.Post.FindMany(new PostFindManyArgs
+{
+    Where = new PostWhereInput
+    {
+        AuthorId = new StringFilter { Equals = users[0].Id },
+    },
+});
 ```
 
 ### Creating Child Records
 
 ```csharp
-var postTable = db.Table<Post>("Post");
-postTable.Create(new Post {
+db.Post.Create(new Post
+{
     Id = Guid.NewGuid().ToString(),
     Title = "AN5 on .NET",
-    AuthorId = authorId
+    AuthorId = authorId,
 });
 ```
 
