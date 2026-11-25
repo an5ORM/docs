@@ -365,17 +365,35 @@ User user = db.getUser().findUnique(
 
 ### Relation Filters
 
-The `some` / `every` / `none` shorthand is the TypeScript adapter's. The JVM SQL builder
-never reads it, and a key it cannot parse lands in an empty `WHERE`, which matches every
-row instead of failing — so filter from the child side:
+Java supports to-many (`some` / `every` / `none`) and to-one (`is` / `isNot`)
+relation filters via correlated `EXISTS` / `NOT EXISTS` subqueries using
+`An5OrmTypes.ListRelationFilter` and `An5OrmTypes.RelationFilter`, and throws
+`IllegalArgumentException` for unsupported or mismatched filter operators:
 
 ```java
-import an5.client.An5OrmTypes.Filters;
+import an5.adapters.An5Query;
+import an5.client.An5OrmTypes.BoolFilter;
+import an5.client.An5OrmTypes.ListRelationFilter;
+import an5.client.An5OrmTypes.PostWhere;
+import an5.client.An5OrmTypes.RelationFilter;
+import an5.client.An5OrmTypes.StringFilter;
+import an5.client.An5OrmTypes.UserWhere;
 
-Map<String, Object> where = new LinkedHashMap<String, Object>();
-where.put("authorId", Filters.eq(userId));
+PostWhere publishedPost = new PostWhere();
+publishedPost.Published = BoolFilter.is(true);
 
-List<Post> posts = db.getPost().findMany(new An5Query().where(where));
+UserWhere usersWithPublished = new UserWhere();
+usersWithPublished.Posts = ListRelationFilter.some(publishedPost);
+
+List<User> users = db.getUser().findMany(new An5Query().where(usersWithPublished.toMap()));
+
+UserWhere byAuthor = new UserWhere();
+byAuthor.Email = StringFilter.is("alice@example.com");
+
+PostWhere postsByAlice = new PostWhere();
+postsByAlice.Author = RelationFilter.is(byAuthor);
+
+List<Post> posts = db.getPost().findMany(new An5Query().where(postsByAlice.toMap()));
 ```
 
 ### Nested Create & Connect
@@ -423,14 +441,22 @@ val user = db.user.findFirst {
 
 ### Relation Filters
 
-The `some` / `every` / `none` shorthand is the TypeScript adapter's. The JVM SQL builder
-never reads it, and a key it cannot parse lands in an empty `WHERE`, which matches every
-row instead of failing — so filter from the child side:
+Kotlin supports to-many (`some` / `every` / `none`) and to-one (`is` / `isNot`)
+relation filters via correlated `EXISTS` / `NOT EXISTS` subqueries using
+`An5Orm.ListRelationFilter` and `An5Orm.RelationFilter` (or the adapter DSL
+`some` / `none` / `every` / `isRelated` / `isNotRelated`), and throws
+`IllegalArgumentException` for unsupported or mismatched filter operators:
 
 ```kotlin
-val posts = db.post.findMany {
-    where(mapOf("authorId" to mapOf("equals" to userId)))
-}
+val publishedPost = An5Orm.PostWhere(published = An5Orm.BoolFilter.`is`(true))
+val users = db.user.findMany(
+    An5Orm.UserWhere(posts = An5Orm.ListRelationFilter.some(publishedPost)).build()
+)
+
+val byAuthor = An5Orm.UserWhere(email = An5Orm.StringFilter.`is`("alice@example.com"))
+val posts = db.post.findMany(
+    An5Orm.PostWhere(author = An5Orm.RelationFilter.`is`(byAuthor)).build()
+)
 ```
 
 ### Nested Create & Connect
