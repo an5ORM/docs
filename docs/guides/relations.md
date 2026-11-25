@@ -256,22 +256,47 @@ postTable.Create(new Post {
 {% when 'golang' %}
 ### Querying Relations in Go
 
-In the generated Go client:
+In the generated Go client, `metadata.go` emits `RelationMap` and `ModelFields`, and
+`*WhereInput` structs support typed `ListRelationFilter[T]` (`Some` / `None` / `Every`)
+and `RelationFilter[T]` (`Is` / `IsNull` / `IsNot` / `IsNotNull`) correlated filters as
+well as foreign-key filters:
 
 ```go
-// Query parent user
-user, err := db.User.FindUnique(ctx, &an5client.UserWhereUnique{
-    ID: "user-id",
+// Users who have at least one published post
+users, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
+    Where: &an5client.UserWhereInput{
+        Posts: &an5client.ListRelationFilter[an5client.PostWhereInput]{
+            Some: &an5client.PostWhereInput{
+                Published: &an5client.BoolFilter{Equals: an5client.BoolPtr(true)},
+            },
+        },
+    },
 })
 if err != nil {
     return err
 }
 
-// Fetch related child posts by foreign key
-posts, err := db.Post.FindMany(ctx, &an5client.PostWhereInput{
-    AuthorID: &an5client.StringFilter{Equals: &user.ID},
+// Posts whose author has an example.com email (to-one relation filter)
+posts, err := db.Post.FindMany(ctx, &an5client.PostFindManyArgs{
+    Where: &an5client.PostWhereInput{
+        Author: &an5client.RelationFilter[an5client.UserWhereInput]{
+            Is: &an5client.UserWhereInput{
+                Email: &an5client.StringFilter{EndsWith: an5client.StringPtr("@example.com")},
+            },
+        },
+    },
 })
-for _, post := range posts {
+if err != nil {
+    return err
+}
+
+// Fetch related child posts directly by foreign key
+fkPosts, err := db.Post.FindMany(ctx, &an5client.PostFindManyArgs{
+    Where: &an5client.PostWhereInput{
+        AuthorId: &an5client.StringFilter{Equals: &users[0].Id},
+    },
+})
+for _, post := range fkPosts {
     fmt.Printf("Post: %s\n", post.Title)
 }
 ```
