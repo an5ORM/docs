@@ -476,14 +476,27 @@ let user = try db.user.findFirst(Query(
 
 ### Relation Filters
 
-The `some` / `every` / `none` shorthand is the TypeScript adapter's. The Swift SQL
-builder never reads it, and a key it cannot parse lands in an empty `WHERE`, which
-matches every row instead of failing — so filter from the child side:
+Swift supports to-many (`some` / `every` / `none`) and to-one (`is` / `isNot`)
+relation filters via correlated `EXISTS` / `NOT EXISTS` subqueries using
+`An5Orm.ListRelationFilter` and `An5Orm.RelationFilter`, and throws
+`An5Error.invalidQuery` for unsupported or mismatched filter operators:
 
 ```swift
-let posts = try db.post.findMany(Query(
-    filter: ["authorId": ["equals": userId]]
-))
+var publishedPost = An5Orm.PostWhere()
+publishedPost.published = An5Orm.BoolFilter.`is`(true)
+
+var usersWithPublished = An5Orm.UserWhere()
+usersWithPublished.posts = .some(publishedPost)
+
+let users = try db.user.findMany(filter: usersWithPublished.build())
+
+var byAuthor = An5Orm.UserWhere()
+byAuthor.email = An5Orm.StringFilter.`is`("alice@example.com")
+
+var postsByAlice = An5Orm.PostWhere()
+postsByAlice.author = .is(byAuthor)
+
+let posts = try db.post.findMany(filter: postsByAlice.build())
 ```
 
 ### Nested Create & Connect
