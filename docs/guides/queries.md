@@ -231,8 +231,8 @@ runtime-specific differences:
 | Sort | `orderBy` | `order_by` | `*OrderByInput` | `*SortOrder` | `SortOrder` | `An5Query.orderBy` | `orderBy(...)` | `Query.orderBy` |
 | Paginate | `skip` / `take` | `skip` / `take` | `Skip` / `Take` | `Skip` / `Take` | `skip` / `take` | `skip` / `take` | `skip` / `take` | `skip` / `take` |
 | Select columns | `select` | `select` | `Select` | `Select` | `select` | `select` | `select` | `select` |
-| Load relations | `include` | `include` | relation filters in `Where` | relation filters in `Where` | `include` via `table()` | `include` | `include` | `include` |
-| Aggregate | `aggregate` | `aggregate` | `Aggregate` | `Aggregate` | through `table()` | `aggregate` | `aggregate` | `aggregate` |
+| Load relations | `include` | `include` | relation filters in `Where` | relation filters in `Where` | `include` | `include` | `include` | `include` |
+| Aggregate | `aggregate` | `aggregate` | `Aggregate` | `Aggregate` | `aggregate` | `aggregate` | `aggregate` | `aggregate` |
 | Group by | `groupBy` | `group_by` | `GroupBy` | `GroupBy` | `group_by` | `groupBy` | `groupBy` | `groupBy` |
 | Raw SQL | `$queryRawUnsafe` | `query_raw` | `QueryRaw` | `QueryRaw` | `adapter().query_raw` | `queryRaw` | `query` | `query` |
 
@@ -513,18 +513,20 @@ let users = db.user().find_many(&UserFindManyArgs {
     take: Some(10),
     skip: 0,
     select: Some(vec!["id".to_string(), "email".to_string()]),
+    include: None,
 }).await?;
 ```
 
-Everything is `async`, and every call returns a `Result`. Typed `group_by` (with
-`OrderAggregateHavingInput` and per-field `_count`) is available directly on
-each model handle (`db.order().group_by(...)`), while `aggregate`, `include`
-eager loading, and raw SQL go through `db.table("Order")` or `db.adapter()`:
+Everything is `async`, and every call returns a `Result`. Typed `aggregate`,
+`group_by` (with `OrderAggregateHavingInput` and per-field `_count`),
+`include` eager loading (on `FindManyArgs` and `FindFirstArgs`), and batch writes
+(`create_many`, `update_many`, `delete_many`, `upsert`) are available directly on
+each model handle (`db.order()`, `db.user()`), while raw SQL goes through
+`db.adapter()`:
 
 ```rust
-use an5_adapters::AggregateArgs;
 use an5_client::{
-    NumberFilter, OrderAggregateHavingInput, OrderGroupByArgs,
+    NumberFilter, OrderAggregateArgs, OrderAggregateHavingInput, OrderGroupByArgs,
     OrderNumericAggregateFilter, OrderOrderByInput, SortOrder,
 };
 use serde_json::json;
@@ -546,13 +548,18 @@ let by_user = db.order().group_by(&OrderGroupByArgs {
 
 println!("count={} sum={}", by_user[0]["_count_user_id"], by_user[0]["sum_total"]);
 
-let agg = db.table("Order").aggregate(&AggregateArgs {
-    sum: Some(json!(["total"])),
+let agg = db.order().aggregate(&OrderAggregateArgs {
+    sum: Some(vec!["total".to_string()]),
     ..Default::default()
 }).await?;
 
 println!("{}", agg["_count"]);       // COUNT(*) is always included
 println!("{}", agg["_sum_total"]);
+
+let users_with_orders = db.user().find_many(&UserFindManyArgs {
+    include: Some(json!({ "orders": { "orderBy": { "total": "desc" }, "take": 5 } })),
+    ..Default::default()
+}).await?;
 
 let rows = db.adapter()
     .query_raw("SELECT userId, SUM(total) AS revenue FROM orders GROUP BY userId", &[])
@@ -565,8 +572,9 @@ Two things to know about the Rust client:
   returns `_count`, `_count_<field>`, and unprefixed `<op>_<field>` keys such as
   `sum_total` / `avg_total`.
 - Filter fields use Rust-safe names such as `in_list` and `not_in` (serialized
-  with `#[serde(rename = "in")]` / `#[serde(rename = "notIn")]`), and `where_`
-  is passed by reference (`&UserFindManyArgs`).
+  with `#[serde(rename = "in")]` / `#[serde(rename = "notIn")]`, including on
+  `DateTimeFilter`, alongside `BoolFilter.not`), and query args are passed by
+  reference (`&UserFindManyArgs`).
 
 {% endif %}
 
