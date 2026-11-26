@@ -34,28 +34,46 @@ db = An5Client()  # automatically connects to DATABASE_URL
 
 {% when 'dotnet' %}
 ```csharp
+using System;
+using System.Collections.Generic;
 using An5Orm;
+using An5Orm.Entities;
 
-var db = new An5DbContext();
+var db = new An5DbContext();  // synchronous, reads DATABASE_URL
 ```
 
 {% when 'golang' %}
 ```go
 import (
     "context"
-    "os"
+    "database/sql"
+    "log"
+
+    _ "github.com/mattn/go-sqlite3"
     "an5client"
 )
 
+connStr := an5client.GetDefaultConnectionString()
+conn, err := sql.Open("sqlite3", connStr)
+if err != nil {
+    log.Fatal(err)
+}
+defer conn.Close()
+
 ctx := context.Background()
-db, err := an5client.NewAn5DbContext(ctx, os.Getenv("DATABASE_URL"))
+db := an5client.NewAn5DbContextWithConnStr(conn, connStr)
 ```
 
 {% when 'rust' %}
 ```rust
-use an5_client::{An5Client, UserCreateInput, UserFindManyArgs};
+use an5_client::{
+    An5Client, SortOrder, StringFilter, UserCreateInput, UserFindFirstArgs,
+    UserFindManyArgs, UserFindUniqueArgs, UserOrderByInput, UserUpdateArgs,
+    UserUpdateInput, UserWhereInput,
+};
 
-let db = An5Client::from_env().await?;
+let conn_str = std::env::var("DATABASE_URL")?;
+let db = An5Client::connect(&conn_str).await?;
 ```
 
 {% when 'java' %}
@@ -124,8 +142,9 @@ print("Created user:", user)
 
 {% when 'dotnet' %}
 ```csharp
-var user = await db.Users.CreateAsync(new UserCreateInput
+var user = db.User.Create(new User
 {
+    Id = Guid.NewGuid().ToString(),
     Email = "john@example.com",
     Name = "John Doe"
 });
@@ -133,17 +152,19 @@ var user = await db.Users.CreateAsync(new UserCreateInput
 
 {% when 'golang' %}
 ```go
-user, err := db.User.Create(ctx, &an5client.UserCreateInput{
+user, err := db.User.Create(ctx, &an5client.User{
+    Id:    "u-1",
     Email: "john@example.com",
-    Name:  "John Doe",
+    Name:  an5client.StringPtr("John Doe"),
 })
 ```
 
 {% when 'rust' %}
 ```rust
-let user = db.user().create(UserCreateInput {
+let user = db.user().create(&UserCreateInput {
     email: "john@example.com".to_string(),
     name: Some("John Doe".to_string()),
+    created_at: None,
 }).await?;
 ```
 
@@ -192,26 +213,26 @@ users = [
 
 {% when 'dotnet' %}
 ```csharp
-var count = await db.Users.CreateManyAsync(new List<UserCreateInput>
+var count = db.User.CreateMany(new List<User>
 {
-    new() { Email = "alice@example.com", Name = "Alice" },
-    new() { Email = "bob@example.com", Name = "Bob" }
+    new() { Id = Guid.NewGuid().ToString(), Email = "alice@example.com", Name = "Alice" },
+    new() { Id = Guid.NewGuid().ToString(), Email = "bob@example.com", Name = "Bob" }
 });
 ```
 
 {% when 'golang' %}
 ```go
-count, err := db.User.CreateMany(ctx, []*an5client.UserCreateInput{
-    {Email: "alice@example.com", Name: "Alice"},
-    {Email: "bob@example.com", Name: "Bob"},
+count, err := db.User.CreateMany(ctx, []*an5client.User{
+    {Id: "u-alice", Email: "alice@example.com", Name: an5client.StringPtr("Alice")},
+    {Id: "u-bob", Email: "bob@example.com", Name: an5client.StringPtr("Bob")},
 })
 ```
 
 {% when 'rust' %}
 ```rust
-for input in vec![
-    UserCreateInput { email: "alice@example.com".into(), name: Some("Alice".into()) },
-    UserCreateInput { email: "bob@example.com".into(), name: Some("Bob".into()) },
+for input in &[
+    UserCreateInput { email: "alice@example.com".into(), name: Some("Alice".into()), created_at: None },
+    UserCreateInput { email: "bob@example.com".into(), name: Some("Bob".into()), created_at: None },
 ] {
     db.user().create(input).await?;
 }
@@ -275,26 +296,35 @@ user = db.user.find_first(
 
 {% when 'dotnet' %}
 ```csharp
-var user = await db.Users.FindFirstAsync(new UserFindFirstArgs
+var user = db.User.FindFirst(new UserFindFirstArgs
 {
-    Where = new UserWhereInput { Email = new StringFilter { Equals = "john@example.com" } }
+    Where = new UserWhereInput
+    {
+        Email = new StringFilter { Equals = "john@example.com" }
+    }
 });
+
+// Or fetch directly by primary key:
+var byId = db.User.FindUnique(userId);
 ```
 
 {% when 'golang' %}
 ```go
 user, err := db.User.FindFirst(ctx, &an5client.UserFindFirstArgs{
     Where: &an5client.UserWhereInput{
-        Email: &an5client.StringFilter{Equals: "john@example.com"},
+        Email: &an5client.StringFilter{Equals: an5client.StringPtr("john@example.com")},
     },
 })
 ```
 
 {% when 'rust' %}
 ```rust
-let user = db.user().find_first(UserFindFirstArgs {
-    where_clause: Some(UserWhereInput {
-        email: Some(StringFilter { equals: Some("john@example.com".into()), ..Default::default() }),
+let user = db.user().find_first(&UserFindFirstArgs {
+    where_: Some(UserWhereInput {
+        email: Some(StringFilter {
+            equals: Some("john@example.com".into()),
+            ..Default::default()
+        }),
         ..Default::default()
     }),
     ..Default::default()
@@ -370,14 +400,14 @@ and raises `ValueError` on unknown field or operator keys.
 
 {% when 'dotnet' %}
 ```csharp
-var users = await db.Users.FindManyAsync(new UserFindManyArgs
+var users = db.User.FindMany(new UserFindManyArgs
 {
     Where = new UserWhereInput
     {
-        IsActive = new BoolFilter { Equals = true },
-        Email = new StringFilter { Contains = "@example.com" }
+        Email = new StringFilter { Contains = "@example.com", Mode = "insensitive" }
     },
-    OrderBy = new UserOrderByInput { CreatedAt = SortOrder.Desc },
+    OrderBy = new UserOrderByInput { CreatedAt = "desc" },
+    Skip = 0,
     Take = 10
 });
 ```
@@ -386,19 +416,31 @@ var users = await db.Users.FindManyAsync(new UserFindManyArgs
 ```go
 users, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
     Where: &an5client.UserWhereInput{
-        IsActive: &an5client.BoolFilter{Equals: true},
-        Email:    &an5client.StringFilter{Contains: "@example.com"},
+        Email: &an5client.StringFilter{
+            Contains: an5client.StringPtr("@example.com"),
+            Mode:     "insensitive",
+        },
     },
-    Take: 10,
+    OrderBy: &an5client.UserOrderByInput{
+        CreatedAt: an5client.SortOrderPtr(an5client.SortOrderDesc),
+    },
+    Take: an5client.IntPtr(10),
 })
 ```
 
 {% when 'rust' %}
 ```rust
-let users = db.user().find_many(UserFindManyArgs {
-    where_clause: Some(UserWhereInput {
-        is_active: Some(BoolFilter { equals: Some(true) }),
-        email: Some(StringFilter { contains: Some("@example.com".into()), ..Default::default() }),
+let users = db.user().find_many(&UserFindManyArgs {
+    where_: Some(UserWhereInput {
+        email: Some(StringFilter {
+            contains: Some("@example.com".into()),
+            mode: Some("insensitive".into()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }),
+    order_by: Some(UserOrderByInput {
+        created_at: Some(SortOrder::Desc),
         ..Default::default()
     }),
     take: Some(10),
@@ -485,26 +527,39 @@ updated = db.user.update(
 
 {% when 'dotnet' %}
 ```csharp
-await db.Users.UpdateAsync(new UserUpdateArgs
-{
-    Where = new UserWhereInput { Id = new StringFilter { Equals = user.Id } },
-    Data = new UserUpdateInput { Name = "Johnny Doe" }
-});
+user.Name = "Johnny Doe";
+var updated = db.User.Update(user);
+
+// Or update matching rows with a filter:
+var count = db.User.UpdateMany(
+    new UserWhereInput { Id = new StringFilter { Equals = user.Id } },
+    new Dictionary<string, object> { ["name"] = "Johnny Doe" });
 ```
 
 {% when 'golang' %}
 ```go
-err := db.User.Update(ctx, &an5client.UserUpdateArgs{
-    Where: &an5client.UserWhereInput{Id: &an5client.StringFilter{Equals: user.Id}},
-    Data:  &an5client.UserUpdateInput{Name: "Johnny Doe"},
-})
+user.Name = an5client.StringPtr("Johnny Doe")
+updated, err := db.User.Update(ctx, user)
+
+// Or update matching rows with a filter:
+count, err := db.User.UpdateMany(
+    ctx,
+    &an5client.UserWhereInput{Id: &an5client.StringFilter{Equals: &user.Id}},
+    map[string]interface{}{"name": "Johnny Doe"},
+)
 ```
 
 {% when 'rust' %}
 ```rust
-let updated = db.user().update(UserUpdateArgs {
-    where_clause: UserWhereInput { id: Some(StringFilter { equals: Some(user.id.clone()), ..Default::default() }), ..Default::default() },
-    data: UserUpdateInput { name: Some("Johnny Doe".into()), ..Default::default() },
+let affected = db.user().update(&UserUpdateArgs {
+    where_: Some(UserWhereInput {
+        id: Some(StringFilter { equals: user.id.clone(), ..Default::default() }),
+        ..Default::default()
+    }),
+    data: UserUpdateInput {
+        name: Some("Johnny Doe".into()),
+        ..Default::default()
+    },
 }).await?;
 ```
 
@@ -568,24 +623,32 @@ db.user.delete(where={"id": user["id"]})
 
 {% when 'dotnet' %}
 ```csharp
-await db.Users.DeleteAsync(new UserWhereInput
+var deleted = db.User.Delete(user.Id);
+
+// Or delete matching rows with a filter:
+var removed = db.User.DeleteMany(new UserDeleteManyArgs
 {
-    Id = new StringFilter { Equals = user.Id }
+    Where = new UserWhereInput { Id = new StringFilter { Equals = user.Id } }
 });
 ```
 
 {% when 'golang' %}
 ```go
-err := db.User.Delete(ctx, &an5client.UserWhereInput{
-    Id: &an5client.StringFilter{Equals: user.Id},
+deleted, err := db.User.Delete(ctx, user.Id)
+
+// Or delete matching rows with a filter:
+removed, err := db.User.DeleteMany(ctx, &an5client.UserDeleteManyArgs{
+    Where: &an5client.UserWhereInput{Id: &an5client.StringFilter{Equals: &user.Id}},
 })
 ```
 
 {% when 'rust' %}
 ```rust
-db.user().delete(UserWhereInput {
-    id: Some(StringFilter { equals: Some(user.id.clone()), ..Default::default() }),
-    ..Default::default()
+db.user().delete(&UserFindUniqueArgs {
+    where_: Some(UserWhereInput {
+        id: Some(StringFilter { equals: user.id.clone(), ..Default::default() }),
+        ..Default::default()
+    }),
 }).await?;
 ```
 

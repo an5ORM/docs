@@ -241,25 +241,26 @@ if __name__ == "__main__":
 {% when 'dotnet' %}
 ```csharp
 using System;
-using System.Threading.Tasks;
 using An5Orm;
+using An5Orm.Entities;
 
 class Program
 {
-    static async Task Main()
+    static void Main()
     {
         var db = new An5DbContext();
 
         // Create a user
-        var user = await db.Users.CreateAsync(new UserCreateInput
+        var user = db.User.Create(new User
         {
+            Id = Guid.NewGuid().ToString(),
             Email = "john@example.com",
             Name = "John Doe"
         });
         Console.WriteLine($"Created user: {user.Id}");
 
         // Find all users
-        var users = await db.Users.FindManyAsync(new UserFindManyArgs());
+        var users = db.User.FindMany(new UserFindManyArgs());
         Console.WriteLine($"Found {users.Count} users");
     }
 }
@@ -271,22 +272,30 @@ package main
 
 import (
     "context"
+    "database/sql"
     "fmt"
-    "os"
+    "log"
+
+    _ "github.com/mattn/go-sqlite3"
     "an5client"
 )
 
 func main() {
-    ctx := context.Background()
-    db, err := an5client.NewAn5DbContext(ctx, os.Getenv("DATABASE_URL"))
+    connStr := an5client.GetDefaultConnectionString()
+    conn, err := sql.Open("sqlite3", connStr)
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
+    defer conn.Close()
+
+    ctx := context.Background()
+    db := an5client.NewAn5DbContextWithConnStr(conn, connStr)
 
     // Create a user
-    user, err := db.User.Create(ctx, &an5client.UserCreateInput{
+    user, err := db.User.Create(ctx, &an5client.User{
+        Id:    "u-1",
         Email: "john@example.com",
-        Name:  "John Doe",
+        Name:  an5client.StringPtr("John Doe"),
     })
     if err != nil {
         panic(err)
@@ -308,17 +317,19 @@ use an5_client::{An5Client, UserCreateInput, UserFindManyArgs};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let db = An5Client::from_env().await?;
+    let conn_str = std::env::var("DATABASE_URL")?;
+    let db = An5Client::connect(&conn_str).await?;
 
     // Create a user
-    let user = db.user().create(UserCreateInput {
+    let user = db.user().create(&UserCreateInput {
         email: "john@example.com".to_string(),
         name: Some("John Doe".to_string()),
+        created_at: None,
     }).await?;
     println!("Created user: {:?}", user);
 
     // Find all users
-    let users = db.user().find_many(UserFindManyArgs::default()).await?;
+    let users = db.user().find_many(&UserFindManyArgs::default()).await?;
     println!("Found {} users", users.len());
 
     Ok(())

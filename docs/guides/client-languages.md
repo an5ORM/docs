@@ -108,36 +108,42 @@ results = db.query_raw("SELECT id, email FROM users WHERE id = %s", user["id"])
 
 ### Output & Setup
 Generated under `an5Client/dotnet/`:
-* `<Model>.cs`: Strongly-typed C# entity classes.
-* `An5DbContext.cs`: ORM context providing `Users`, `Posts`, etc.
-* `An5OrmTypes.cs`: Query argument and filter classes.
+* `<Model>.cs`: Strongly-typed C# entity classes (`namespace An5Orm.Entities`).
+* `An5DbContext.cs`: Synchronous ORM context exposing `User` / `Users`, `Order` / `Orders`, etc.
+* `An5OrmTypes.cs`: Query argument, typed `*WhereInput`, `*OrderByInput`, `*AggregateHavingInput`, and `*GroupByArgs` classes.
 
 ### Usage
 ```csharp
+using System;
+using System.Collections.Generic;
 using An5Orm;
+using An5Orm.Entities;
 
-var db = new An5DbContext(); // reads DATABASE_URL from environment
+var db = new An5DbContext(); // synchronous, reads DATABASE_URL from environment
 
 // Create
-var user = await db.Users.CreateAsync(new UserCreateInput
+var user = db.User.Create(new User
 {
+    Id = Guid.NewGuid().ToString(),
     Email = "carol@example.com",
     Name = "Carol"
 });
 
 // Find Many with Filters
-var users = await db.Users.FindManyAsync(new UserFindManyArgs
+var users = db.User.FindMany(new UserFindManyArgs
 {
     Where = new UserWhereInput
     {
-        Email = new StringFilter { Contains = "@example.com" }
+        Email = new StringFilter { Contains = "@example.com", Mode = "insensitive" }
     },
-    OrderBy = new UserOrderByInput { CreatedAt = SortOrder.Desc },
+    OrderBy = new UserOrderByInput { CreatedAt = "desc" },
     Take = 10
 });
 
 // Raw SQL
-var rawUsers = await db.QueryRawAsync<User>("SELECT * FROM users WHERE status = @p_0", "active");
+var rawUsers = db.User.QueryRaw(
+    "SELECT * FROM users WHERE email LIKE @email",
+    new Dictionary<string, object> { ["email"] = "%@example.com%" });
 ```
 
 ---
@@ -146,7 +152,7 @@ var rawUsers = await db.QueryRawAsync<User>("SELECT * FROM users WHERE status = 
 
 ### Output & Setup
 Generated under `an5Client/golang/`:
-* `<model>.go`: Struct definitions with JSON tags.
+* `<model>.go`: Struct definitions, `*WhereInput`, `*OrderByInput`, and `*GroupByArgs`.
 * `client.go`: `An5DbContext` and generic `TableClient[T]` methods.
 
 ### Usage
@@ -155,31 +161,46 @@ package main
 
 import (
     "context"
+    "database/sql"
     "fmt"
-    "os"
+    "log"
+
+    _ "github.com/mattn/go-sqlite3"
     "an5client"
 )
 
 func main() {
-    ctx := context.Background()
-    db, err := an5client.NewAn5DbContext(ctx, os.Getenv("DATABASE_URL"))
+    connStr := an5client.GetDefaultConnectionString()
+    conn, err := sql.Open("sqlite3", connStr)
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
+    defer conn.Close()
+
+    ctx := context.Background()
+    db := an5client.NewAn5DbContextWithConnStr(conn, connStr)
 
     // Create
-    user, err := db.User.Create(ctx, &an5client.UserCreateInput{
+    user, err := db.User.Create(ctx, &an5client.User{
+        Id:    "u-dave",
         Email: "dave@example.com",
-        Name:  "Dave",
+        Name:  an5client.StringPtr("Dave"),
     })
+    if err != nil {
+        log.Fatal(err)
+    }
+    _ = user
 
     // Find Many
     users, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
         Where: &an5client.UserWhereInput{
-            Email: &an5client.StringFilter{Contains: "@example.com"},
+            Email: &an5client.StringFilter{Contains: an5client.StringPtr("@example.com")},
         },
-        Take: 10,
+        Take: an5client.IntPtr(10),
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Printf("Retrieved %d users\n", len(users))
 }
 ```
@@ -190,28 +211,37 @@ func main() {
 
 ### Output & Setup
 Generated under `an5Client/rust/src/`:
-* `models.rs`: Serde-deriving model structs.
+* `models.rs`: Serde-deriving model structs, `*WhereInput`, `*AggregateHavingInput`, and `*GroupByArgs`.
 * `filters.rs`: Type-safe filter builders.
 * `client.rs`: Async client with runtime adapter binding.
 
 ### Usage
 ```rust
-use an5_client::{An5Client, UserCreateInput, UserFindManyArgs, StringFilter};
+use an5_client::{
+    An5Client, StringFilter, UserCreateInput, UserFindManyArgs, UserWhereInput,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let db = An5Client::from_env().await?;
+    let conn_str = std::env::var("DATABASE_URL")?;
+    let db = An5Client::connect(&conn_str).await?;
 
     // Create
-    let user = db.user().create(UserCreateInput {
+    let user = db.user().create(&UserCreateInput {
         email: "eve@example.com".to_string(),
         name: Some("Eve".to_string()),
+        created_at: None,
     }).await?;
+    let _ = user;
 
     // Find Many
-    let users = db.user().find_many(UserFindManyArgs {
-        where_clause: Some(UserWhereInput {
-            email: Some(StringFilter { contains: Some("@example.com".to_string()), ..Default::default() }),
+    let users = db.user().find_many(&UserFindManyArgs {
+        where_: Some(UserWhereInput {
+            email: Some(StringFilter {
+                contains: Some("@example.com".to_string()),
+                mode: Some("insensitive".to_string()),
+                ..Default::default()
+            }),
             ..Default::default()
         }),
         take: Some(10),
@@ -320,6 +350,7 @@ module, smoke included.
 
 ### Initialization & CRUD
 ```kotlin
+import an5.adapters.Sort
 import an5.adapters.eq
 import an5.adapters.gte
 import an5.adapters.contains
@@ -409,8 +440,8 @@ eve = try db.user.create(eve)
 
 // Find many
 let adults = try db.user.findMany(Query(filter: [
-    "score": An5Orm.NumberFilter.atLeast(10),
-    "email": An5Orm.StringFilter.has("@example.com"),
+    "score": An5Orm.NumberFilter.atLeast(10).build(),
+    "email": An5Orm.StringFilter.has("@example.com").build(),
 ], orderBy: [["name": "asc"]], take: 10))
 
 // Relations and eager loading
