@@ -463,13 +463,15 @@ byId.Id = StringFilter.is(userId);
 
 Map<String, Object> include = new LinkedHashMap<String, Object>();
 include.put("posts", true);
+include.put("_count", true);
 
 User user = db.getUser().findUnique(
     new An5Query().where(byId.toMap()).include(include));
+Integer postCount = user.getCount() == null ? null : user.getCount().get("posts");
 ```
 
-The value under the relation name is `true` or an options map. The options are the ones
-a query takes — `where`, `orderBy`, `skip`, `take`, `select` and a nested `include`:
+The value under the relation name is `true` or an options map (`where`, `orderBy`, `skip`, `take`,
+`select` and nested `include`), and `_count` hydrates `user.getCount()` on the returned model (`null` when omitted):
 
 ```java
 Map<String, Object> options = new LinkedHashMap<String, Object>();
@@ -481,6 +483,9 @@ options.put("select", Arrays.asList("id", "title"));
 
 Map<String, Object> include = new LinkedHashMap<String, Object>();
 include.put("posts", options);
+include.put("_count", Collections.singletonMap("select",
+    Collections.singletonMap("posts", Collections.singletonMap(
+        "where", Collections.singletonMap("published", true)))));
 
 User user = db.getUser().findUnique(
     new An5Query().where(byId.toMap()).include(include));
@@ -539,25 +544,30 @@ import an5.client.An5Orm
 import an5.client.Post
 import an5.client.User
 
-val user = db.user.findFirst {
+val user = db.user.findUnique {
     where(An5Orm.UserWhere(id = An5Orm.StringFilter.`is`(userId)).build())
-    include(mapOf("posts" to true))
+    include(mapOf("posts" to true, "_count" to true))
 }
+val postCount = user?.count?.get("posts")
 ```
 
-`findFirst { ... }` takes the query block, so `include` sits next to `where`. The value
-under the relation name is `true` or a map of the same options a query takes:
+`findFirst { ... }` and `findUnique { ... }` both accept a query block (and `(filter) { ... }` overload),
+hydrating related entities and optional `user.count` (`null` when `_count` was not requested):
 
 ```kotlin
-val user = db.user.findFirst {
-    where(An5Orm.UserWhere(id = An5Orm.StringFilter.`is`(userId)).build())
+val user = db.user.findUnique(mapOf("id" to userId)) {
     include(mapOf(
         "posts" to mapOf(
             "where" to mapOf("title" to mapOf("contains" to "AN5")),
             "orderBy" to mapOf("id" to "desc"),
             "take" to 5,
             "select" to listOf("id", "title"),
-        )
+        ),
+        "_count" to mapOf(
+            "select" to mapOf(
+                "posts" to mapOf("where" to mapOf("published" to true))
+            )
+        ),
     ))
 }
 ```
@@ -602,24 +612,32 @@ import An5Client
 var byId = An5Orm.UserWhere()
 byId.id = An5Orm.StringFilter.`is`(userId)
 
-let user = try db.user.findFirst(Query(
+let user = try db.user.findUnique(Query(
     filter: byId.build(),
-    include: ["posts": true]
+    include: ["posts": true, "_count": true]
 ))
+let postCount = user?.count?["posts"]
 ```
 
-`Query` carries the whole call, and the value under the relation name is `true` or a
-dictionary of the same options:
+`Query` carries the whole call for `findMany`, `findFirst`, `findUnique`, and `update`,
+hydrating relations and optional `user.count` (`nil` when `_count` was not requested):
 
 ```swift
-let user = try db.user.findFirst(Query(
+let user = try db.user.findUnique(Query(
     filter: byId.build(),
-    include: ["posts": [
-        "where": ["title": ["contains": "AN5"]],
-        "orderBy": ["id": "desc"],
-        "take": 5,
-        "select": ["id", "title"],
-    ]]
+    include: [
+        "posts": [
+            "where": ["title": ["contains": "AN5"]],
+            "orderBy": ["id": "desc"],
+            "take": 5,
+            "select": ["id", "title"],
+        ],
+        "_count": [
+            "select": [
+                "posts": ["where": ["published": true]],
+            ],
+        ],
+    ]
 ))
 ```
 

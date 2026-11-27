@@ -642,9 +642,10 @@ try (An5DbContext db = new An5DbContext(System.getenv("DATABASE_URL"))) {
 }
 ```
 
-Every model shares one `An5Query`: `where` takes the map `UserWhere.toMap()` produces,
-and `orderBy`, `skip`, `take`, `select` and `include` chain onto it. `StringFilter`
-also provides `.insensitive()` / `.mode("insensitive")` (or `Filters.insensitive(...)` on
+Every model and view client shares `An5Query` across `findMany`, `findFirst`, and `findUnique`:
+`where` takes the map `UserWhere.toMap()` produces, `orderBy`, `skip`, `take`, `select` and
+`include` chain onto it, and `_count` hydrates `user.getCount()` (`Map<String, Integer>`, `null` when omitted).
+`StringFilter` also provides `.insensitive()` / `.mode("insensitive")` (or `Filters.insensitive(...)` on
 raw maps). Calls are synchronous and throw `SQLException`.
 
 Aggregates and typed `GroupBy` (including `Having` and per-field `count`) live on
@@ -732,10 +733,11 @@ An5Db(An5Config.connectionString()).use { db ->
 }
 ```
 
-`findMany { ... }` uses a `QueryBuilder` block while typed `*GroupBy` /
-`*AggregateHaving` builders compile checked `HAVING` clauses and per-field
-`count("_all", "userId")`. Aggregate keys are flat — `stats["_count"]`,
-`stats["_sum_total"]` — and `db.query` is the raw-SQL escape hatch.
+`findMany { ... }`, `findFirst { ... }`, and `findUnique { ... }` use a `QueryBuilder`
+block across both `ModelClient` and `ViewClient` (`include` `_count` hydrates `user.count`,
+or `null` when omitted), while typed `*GroupBy` / `*AggregateHaving` builders compile
+checked `HAVING` clauses and per-field `count("_all", "userId")`. Aggregate keys are flat
+— `stats["_count"]`, `stats["_sum_total"]` — and `db.query` is the raw-SQL escape hatch.
 
 {% endif %}
 
@@ -785,10 +787,11 @@ let rows = try db.query(
     "SELECT userId, SUM(total) AS revenue FROM orders GROUP BY userId")
 ```
 
-`Query` and `Aggregate` are value types, and generated `*GroupBy` /
-`*AggregateHaving` builders add type-safe `HAVING` filtering and per-field
-`count`. Aggregate keys are flat — `stats["_count"]`, `stats["_sum_total"]` —
-and `db.query` is the raw-SQL escape hatch.
+`Query` and `Aggregate` are value types across `ModelClient` and `ViewModelClient`
+(`findMany`, `findFirst`, `findUnique`, and `update` with `Query`, hydrating `_count` into
+`user.count` as `[String: Int]?`), and generated `*GroupBy` / `*AggregateHaving` builders
+add type-safe `HAVING` filtering and per-field `count`. Aggregate keys are flat —
+`stats["_count"]`, `stats["_sum_total"]` — and `db.query` is the raw-SQL escape hatch.
 
 {% endif %}
 {% endif %}
