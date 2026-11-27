@@ -272,6 +272,32 @@ var fkPosts = db.Post.FindMany(new PostFindManyArgs
 });
 ```
 
+### Include Relations in C#
+
+`FindMany`, `FindFirst`, and `FindUnique` accept typed `<Model>Include` objects (or dictionaries) for eager relation hydration, `_count`, nested `Where`/`OrderBy`/per-parent `Skip`/`Take`/`Select`, and multi-level nested `Include`:
+
+```csharp
+var authorsWithPosts = db.User.FindMany(new UserFindManyArgs
+{
+    Include = new UserInclude
+    {
+        Posts = new PostFindManyArgs
+        {
+            Where = new PostWhereInput { Published = new BoolFilter { Equals = true } },
+            OrderBy = new PostOrderByInput { Title = "asc" },
+            Take = 5,
+            Select = new List<string> { "id", "title" },
+        },
+        _count = true,
+    },
+});
+
+var postWithAuthor = db.Post.FindFirst(new PostFindFirstArgs
+{
+    Include = new PostInclude { Author = true },
+});
+```
+
 ### Creating Child Records
 
 ```csharp

@@ -231,7 +231,7 @@ runtime-specific differences:
 | Sort | `orderBy` | `order_by` | `*OrderByInput` | `*SortOrder` | `SortOrder` | `An5Query.orderBy` | `orderBy(...)` | `Query.orderBy` |
 | Paginate | `skip` / `take` | `skip` / `take` | `Skip` / `Take` | `Skip` / `Take` | `skip` / `take` | `skip` / `take` | `skip` / `take` | `skip` / `take` |
 | Select columns | `select` | `select` | `Select` | `Select` | `select` | `select` | `select` | `select` |
-| Load relations | `include` | `include` | relation filters in `Where` | relation filters in `Where` | `include` | `include` | `include` | `include` |
+| Load relations | `include` | `include` | `Include` | relation filters in `Where` | `include` | `include` | `include` | `include` |
 | Aggregate | `aggregate` | `aggregate` | `Aggregate` | `Aggregate` | `aggregate` | `aggregate` | `aggregate` | `aggregate` |
 | Group by | `groupBy` | `group_by` | `GroupBy` | `GroupBy` | `group_by` | `groupBy` | `groupBy` | `groupBy` |
 | Raw SQL | `$queryRawUnsafe` | `query_raw` | `QueryRaw` | `QueryRaw` | `adapter().query_raw` | `queryRaw` | `query` | `query` |
@@ -393,9 +393,29 @@ var byUser = db.Order.GroupBy(new OrderGroupByArgs
 
 A few .NET-specific details are worth knowing:
 
-- **Eager `Include` is not on `*FindManyArgs`.** Filter across relations with
-  `ListRelationFilter<T>` / `RelationFilter<T>` inside `Where`, or use `QueryRaw`
-  when you need custom joins.
+- **Eager relation loading uses `Include` on `*FindManyArgs`, `*FindFirstArgs`, and `*FindUniqueArgs`:**
+  pass `<Model>Include` (or a dictionary) with `true`, nested `<Child>FindManyArgs`
+  (`Where`, `OrderBy`, per-parent `Skip`/`Take`, `Select`, nested `Include`), and
+  `_count` (`true` or `select` with optional per-relation `Where`):
+
+```csharp
+var usersWithOrders = db.User.FindMany(new UserFindManyArgs
+{
+    Include = new UserInclude
+    {
+        Orders = new OrderFindManyArgs
+        {
+            Where = new OrderWhereInput { Total = new IntFilter { Gte = 100 } },
+            OrderBy = new OrderOrderByInput { Total = "desc" },
+            Skip = 0,
+            Take = 5,
+            Select = new List<string> { "id", "total" },
+        },
+        _count = true,
+    },
+});
+```
+
 - **`Aggregate(...)` returns flat keys (`_sum_total`), while typed
   `GroupBy(OrderGroupByArgs)` returns nested dictionaries (`_sum["total"]`).**
 - **The client is synchronous throughout** — there is no `FindManyAsync` — and
