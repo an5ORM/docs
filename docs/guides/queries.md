@@ -231,7 +231,7 @@ runtime-specific differences:
 | Sort | `orderBy` | `order_by` | `*OrderByInput` | `*SortOrder` | `SortOrder` | `An5Query.orderBy` | `orderBy(...)` | `Query.orderBy` |
 | Paginate | `skip` / `take` | `skip` / `take` | `Skip` / `Take` | `Skip` / `Take` | `skip` / `take` | `skip` / `take` | `skip` / `take` | `skip` / `take` |
 | Select columns | `select` | `select` | `Select` | `Select` | `select` | `select` | `select` | `select` |
-| Load relations | `include` | `include` | `Include` | relation filters in `Where` | `include` | `include` | `include` | `include` |
+| Load relations | `include` | `include` | `Include` | `Include` | `include` | `include` | `include` | `include` |
 | Aggregate | `aggregate` | `aggregate` | `Aggregate` | `Aggregate` | `aggregate` | `aggregate` | `aggregate` | `aggregate` |
 | Group by | `groupBy` | `group_by` | `GroupBy` | `GroupBy` | `group_by` | `groupBy` | `groupBy` | `groupBy` |
 | Raw SQL | `$queryRawUnsafe` | `query_raw` | `QueryRaw` | `QueryRaw` | `adapter().query_raw` | `queryRaw` | `query` | `query` |
@@ -458,11 +458,21 @@ users, err := db.User.FindMany(ctx, &an5.UserFindManyArgs{
 	Take:   an5.IntPtr(10),
 	Skip:   an5.IntPtr(0),
 	Select: []string{"id", "email", "created_at"},
+	Include: &an5.UserInclude{
+		Orders: &an5.OrderFindManyArgs{
+			OrderBy: &an5.OrderOrderByInput{Total: an5.SortOrderPtr(an5.SortOrderDesc)},
+			Take:    an5.IntPtr(5),
+		},
+		Count: true,
+	},
 })
 ```
 
 Every call takes a `context.Context` and returns `([]T, error)`. `Take` and `Skip`
 are `*int` pointers, and `Skip` works either on its own or paired with `Take`.
+`Include` accepts typed `*<Model>Include` structs (or `map[string]interface{}`) across
+`FindMany`, `FindFirst`, and `FindUnique`, supporting nested `Where`, `OrderBy`,
+per-parent `Skip`/`Take`, `Select`, recursive `Include`, and `_count`.
 
 Counting, aggregations, typed `GroupBy` (with `Having`), and raw SQL are all
 built into `TableClient[T]`:
@@ -495,9 +505,11 @@ Two things to know about the Go client:
 
 - It defaults column identifiers to `snake_case` (`created_at`), while generated
   metadata resolves schema field names across SQLite, PostgreSQL, and SQL Server.
-- `Include` is not on `*FindManyArgs`; use typed `ListRelationFilter[T]` /
-  `RelationFilter[T]` in `Where` for correlated relation filtering, and `In` /
-  `NotIn` work across string, numeric, integer, and datetime filters.
+- `Include` loads related entities and `_count` in batched `WHERE col IN (...)`
+  queries while automatically injecting and stripping join keys when `Select` is
+  present, and `ListRelationFilter[T]` / `RelationFilter[T]` in `Where` emit
+  correlated `EXISTS` / `NOT EXISTS` subqueries alongside `In` / `NotIn` across
+  string, numeric, integer, and datetime filters.
 
 {% endif %}
 

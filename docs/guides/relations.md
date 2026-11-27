@@ -312,12 +312,39 @@ db.Post.Create(new Post
 {% when 'golang' %}
 ### Querying Relations in Go
 
-In the generated Go client, `metadata.go` emits `RelationMap` and `ModelFields`, and
-`*WhereInput` structs support typed `ListRelationFilter[T]` (`Some` / `None` / `Every`)
-and `RelationFilter[T]` (`Is` / `IsNull` / `IsNot` / `IsNotNull`) correlated filters as
-well as foreign-key filters:
+In the generated Go client, `metadata.go` emits `RelationMap` and `ModelFields`,
+each generated model struct includes its relation fields plus `Count` (`json:"_count,omitempty"`),
+and `*FindManyArgs` / `*FindFirstArgs` / `*FindUniqueArgs` support typed `*Include` structs
+(with nested `Where`, `OrderBy`, per-parent `Skip`/`Take`, `Select`, recursive `Include`,
+and `_count`) as well as correlated `ListRelationFilter[T]` (`Some` / `None` / `Every`)
+and `RelationFilter[T]` (`Is` / `IsNull` / `IsNot` / `IsNotNull`) filters:
 
 ```go
+// Eagerly load each user's 2 newest published posts and total published post count
+usersWithPosts, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
+    Include: &an5client.UserInclude{
+        Posts: &an5client.PostFindManyArgs{
+            Where:   &an5client.PostWhereInput{Published: &an5client.BoolFilter{Equals: an5client.BoolPtr(true)}},
+            OrderBy: &an5client.PostOrderByInput{CreatedAt: an5client.SortOrderPtr(an5client.SortOrderDesc)},
+            Take:    an5client.IntPtr(2),
+            Select:  []string{"id", "title"},
+        },
+        Count: &an5client.CountIncludeOptions{
+            Select: map[string]interface{}{
+                "posts": map[string]interface{}{
+                    "where": &an5client.PostWhereInput{Published: &an5client.BoolFilter{Equals: an5client.BoolPtr(true)}},
+                },
+            },
+        },
+    },
+})
+if err != nil {
+    return err
+}
+for _, u := range usersWithPosts {
+    fmt.Printf("%s: total published=%d, loaded=%d\n", u.Email, u.Count["posts"], len(u.Posts))
+}
+
 // Users who have at least one published post
 users, err := db.User.FindMany(ctx, &an5client.UserFindManyArgs{
     Where: &an5client.UserWhereInput{
@@ -332,7 +359,7 @@ if err != nil {
     return err
 }
 
-// Posts whose author has an example.com email (to-one relation filter)
+// Posts whose author has an example.com email (to-one relation filter + eager Author include)
 posts, err := db.Post.FindMany(ctx, &an5client.PostFindManyArgs{
     Where: &an5client.PostWhereInput{
         Author: &an5client.RelationFilter[an5client.UserWhereInput]{
@@ -341,6 +368,7 @@ posts, err := db.Post.FindMany(ctx, &an5client.PostFindManyArgs{
             },
         },
     },
+    Include: &an5client.PostInclude{Author: true},
 })
 if err != nil {
     return err
