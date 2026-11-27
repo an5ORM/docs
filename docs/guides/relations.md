@@ -162,25 +162,39 @@ const user = await db.user.create({
 {% when 'python' %}
 ### Include Relations in Python
 
-Query related models using dictionary specifications passed to `include`:
+Query related models using either dictionaries or typed `*Include` / `*FindUniqueArgs` / `*FindManyArgs` dataclasses passed to `include`:
 
 ```python
+from an5_client import (
+    BoolFilter,
+    PostFindManyArgs,
+    PostInclude,
+    PostWhereInput,
+    UserFindUniqueArgs,
+    UserInclude,
+    UserWhereInput,
+)
+
 # Fetch user with their posts
 user = db.user.find_unique(
     where={"id": "user-id"},
     include={"posts": True}
 )
 
-# Filtered and ordered relation include
+# Filtered, per-parent paged include and filtered _count using typed dataclasses
 user = db.user.find_unique(
-    where={"id": "user-id"},
-    include={
-        "posts": {
-            "where": {"published": True},
-            "order_by": {"createdAt": "desc"},
-            "take": 5
-        }
-    }
+    UserFindUniqueArgs(
+        where=UserWhereInput(id="user-id"),
+        include=UserInclude(
+            posts=PostFindManyArgs(
+                where=PostWhereInput(published=BoolFilter(equals=True)),
+                order_by={"createdAt": "desc"},
+                take=5,
+                include=PostInclude(author=True),
+            ),
+            _count={"select": {"posts": {"where": {"published": True}}}},
+        ),
+    )
 )
 ```
 
